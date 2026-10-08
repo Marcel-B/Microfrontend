@@ -78,7 +78,9 @@ public sealed class DevOverridesTests
         var other = await PreflightAsync(app, "https://evil.example");
 
         Assert.Equal(StageShell, allowed.Headers.GetValues("Access-Control-Allow-Origin").Single());
-        Assert.Contains("authorization", allowed.Headers.GetValues("Access-Control-Allow-Headers").Single(), StringComparison.OrdinalIgnoreCase);
+        var headers = allowed.Headers.GetValues("Access-Control-Allow-Headers").Single();
+        Assert.Contains("authorization", headers, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("x-correlation-id", headers, StringComparison.OrdinalIgnoreCase);
         Assert.False(other.Headers.Contains("Access-Control-Allow-Origin"));
     }
 
@@ -97,7 +99,7 @@ public sealed class DevOverridesTests
         var request = new HttpRequestMessage(HttpMethod.Options, "/api/me");
         request.Headers.Add("Origin", origin);
         request.Headers.Add("Access-Control-Request-Method", "GET");
-        request.Headers.Add("Access-Control-Request-Headers", "authorization,x-csrf");
+        request.Headers.Add("Access-Control-Request-Headers", "authorization,x-csrf,x-correlation-id");
         return app.GetTestClient().SendAsync(request);
     }
 

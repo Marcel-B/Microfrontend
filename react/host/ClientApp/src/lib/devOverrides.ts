@@ -8,9 +8,9 @@ import { registerGlobalPlugins, registerPlugins, type ModuleFederationRuntimePlu
  *
  * - UI: a Module Federation runtime plugin replaces the remote's entry in beforeRegisterRemote. It is registered for the
  *   shell's instance and globally, so remotes that a remote loads itself are covered too.
- * - API: fetch calls to /api/{id}/ go to the remote BFF on the developer's machine instead, with the session's access
- *   token from /bff/dev/token as bearer (that BFF never sees the stage's cookie). Only fetch is redirected, not
- *   XMLHttpRequest.
+ * - API: calls to /api/{id}/ go to the remote BFF on the developer's machine instead, with the session's access token
+ *   from /bff/dev/token as bearer (that BFF never sees the stage's cookie). Both fetch and XMLHttpRequest are redirected,
+ *   since Axios uses the latter in browsers.
  */
 
 /** One remote replaced in this browser. */
@@ -110,9 +110,15 @@ function overridePlugin(overrides: RemoteOverrides): ModuleFederationRuntimePlug
 const nativeFetch = window.fetch.bind(window)
 let cachedToken: { value: string; expiresAt: number } | null = null
 
+/** The cached token while it is still good for a while, without asking the host BFF. */
+function currentToken(): string | null {
+  return cachedToken && cachedToken.expiresAt - 30_000 > Date.now() ? cachedToken.value : null
+}
+
 /** The session's access token for the developer's own remote BFF, or null when not logged in. */
 async function devToken(): Promise<string | null> {
-  if (cachedToken && cachedToken.expiresAt - 30_000 > Date.now()) return cachedToken.value
+  const current = currentToken()
+  if (current) return current
   const response = await nativeFetch('/bff/dev/token', { headers: { 'X-CSRF': '1' }, credentials: 'same-origin' })
   if (!response.ok) {
     cachedToken = null
@@ -148,6 +154,55 @@ function redirectApiCalls(overrides: RemoteOverrides): void {
   }
 }
 
+type XhrOpen = (method: string, url: string | URL, async?: boolean, username?: string | null, password?: string | null) => void
+
+/**
+ * The same for XMLHttpRequest (Axios's adapter in browsers). open() points a matching request at the developer's BFF;
+ * send() waits for the token when none is cached, then adds it as bearer and sends without the stage's cookie.
+ */
+function redirectXhr(overrides: RemoteOverrides): void {
+  const proto = XMLHttpRequest.prototype
+  const open = proto.open as XhrOpen
+  const send = proto.send
+  const abort = proto.abort
+  const redirected = new WeakSet<XMLHttpRequest>()
+  // Aborted while waiting for the token: abort() leaves an unsent request opened, so send() must not run afterwards.
+  const aborted = new WeakSet<XMLHttpRequest>()
+  // A synchronous request cannot wait for the token; it goes with the cached one or none.
+  const synchronous = new WeakSet<XMLHttpRequest>()
+
+  proto.open = function (this: XMLHttpRequest, method: string, url: string | URL, ...rest: unknown[]) {
+    const target = apiTarget(new URL(String(url), window.location.href), overrides)
+    if (target) redirected.add(this)
+    else redirected.delete(this)
+    aborted.delete(this)
+    if (rest[0] === false) synchronous.add(this)
+    else synchronous.delete(this)
+    return (open as (...args: unknown[]) => void).call(this, method, target ? target.href : url, ...rest)
+  } as XhrOpen
+
+  proto.send = function (this: XMLHttpRequest, body?: Document | XMLHttpRequestBodyInit | null) {
+    if (!redirected.has(this)) return send.call(this, body)
+    this.withCredentials = false
+    const sendWith = (token: string | null) => {
+      if (token) this.setRequestHeader('Authorization', `Bearer ${token}`)
+      send.call(this, body)
+    }
+    const token = currentToken()
+    if (token || synchronous.has(this)) return sendWith(token)
+    void devToken()
+      .catch(() => null)
+      .then((fetched) => {
+        if (!aborted.has(this)) sendWith(fetched)
+      })
+  }
+
+  proto.abort = function (this: XMLHttpRequest) {
+    aborted.add(this)
+    return abort.call(this)
+  }
+}
+
 let active: RemoteOverrides | null = null
 
 /**
@@ -162,7 +217,10 @@ export function activateOverrides(): RemoteOverrides {
     registerGlobalPlugins([plugin])
     registerPlugins([plugin])
   }
-  if (Object.values(active).some((override) => override.api)) redirectApiCalls(active)
+  if (Object.values(active).some((override) => override.api)) {
+    redirectApiCalls(active)
+    redirectXhr(active)
+  }
   if (Object.keys(active).length) console.warn('[mfe] Local remote overrides active in this browser:', active)
   return active
 }

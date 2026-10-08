@@ -76,8 +76,9 @@ public static class RemoteBffExtensions
 
             options.AddDefaultPolicy(policy => policy
                 .WithOrigins(origins)
-                // The shell's bffFetch sends X-CSRF; the bearer token replaces the cookie, so no credentials.
-                .WithHeaders("Authorization", "Content-Type", "X-CSRF")
+                // Any header, since a remote's HTTP client may add its own (correlation ids, X-CSRF); only the listed shells
+                // get this far. The bearer token replaces the cookie, so no credentials.
+                .AllowAnyHeader()
                 .AllowAnyMethod());
         });
         return services;
