@@ -9,8 +9,8 @@ import type { ShellOptions } from './tests/fixtures'
  * reuses them if they are already running (e.g. via `npm run dev`). Each BFF starts its own Vite dev servers (its
  * ClientApp, and the host BFF the component library) and only answers once they are up, so the BFF URLs below cover
  * the frontends too. The BFFs start with --no-build: `npm run test:e2e` builds them first. Playwright starts the
- * servers one after another, so each URL must answer without the servers further down (the demo BFFs answer /api/me
- * with 401 right away).
+ * servers one after another, so each URL must answer without the servers further down. A demo BFF counts as up once it
+ * is registered at its host BFF (/health/ready), so the host already shows its pages when the tests start.
  * Set E2E_VUE_URL and E2E_REACT_URL to test another environment; webServer is skipped then.
  */
 const external = process.env.E2E_VUE_URL && process.env.E2E_REACT_URL
@@ -56,9 +56,9 @@ export default defineConfig<ShellOptions>({
         devServer('npm run dev:identity', 'http://localhost:5001/.well-known/openid-configuration'),
         // Vue: host BFF (with shell and component library), demo BFF (with the demo remote)
         devServer('npm run dev:vue:host-bff', 'http://localhost:5010/bff/remotes'),
-        devServer('npm run dev:vue:demo-bff', 'http://localhost:5011/api/me'),
+        devServer('npm run dev:vue:demo-bff', 'http://localhost:5011/health/ready'),
         // React: same layout
         devServer('npm run dev:react:host-bff', 'http://localhost:5020/bff/remotes'),
-        devServer('npm run dev:react:demo-bff', 'http://localhost:5021/api/me'),
+        devServer('npm run dev:react:demo-bff', 'http://localhost:5021/health/ready'),
       ],
 })

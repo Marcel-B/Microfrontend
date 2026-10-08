@@ -8,7 +8,7 @@ import { adminRole } from '@/lib/registry'
 import { cn } from '@/lib/utils'
 
 /** Icons the BFF config may reference by name. Extend as remotes need more. */
-const icons: Record<string, LucideIcon> = { house: House, star: Star, shield: Shield, wrench: Wrench, network: Network }
+export const navIcons: Record<string, LucideIcon> = { house: House, star: Star, shield: Shield, wrench: Wrench, network: Network }
 
 interface NavItem {
   to: string
@@ -28,7 +28,7 @@ export function AppNav({ onNavigate }: { onNavigate?: () => void }) {
       .filter((page) =>
         page.requiresAuth || page.roles.length ? auth.user.isAuthenticated && auth.hasAnyRole(page.roles) : true,
       )
-      .map((page) => ({ to: page.path, label: localized(page.title, i18n.language), icon: icons[page.icon ?? ''] ?? FileText })),
+      .map((page) => ({ to: page.path, label: localized(page.title, i18n.language), icon: navIcons[page.icon ?? ''] ?? FileText })),
     { to: '/debug', label: t('nav.debug'), icon: Wrench },
     ...(auth.user.isAuthenticated && auth.hasAnyRole([adminRole])
       ? [{ to: '/debug/registry', label: t('nav.registry'), icon: Network }]

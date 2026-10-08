@@ -217,7 +217,7 @@ public sealed class RemoteRegistry(
     private void Record(DateTimeOffset at, string id, RegistryEventKind kind, string? owner, string? detail)
     {
         store.Append(new RegistryEvent(at, id, kind, owner, detail));
-        logger.LogInformation("Remote {RemoteId}: {Event} {Detail}", id, kind, detail);
+        logger.LogInformation("Remote {RemoteId}: {Event} {Detail}", id, kind, detail ?? string.Empty);
     }
 
     private void PublishRoutes() => routes.Update([.. store.All().Select(r => r.Registration)]);

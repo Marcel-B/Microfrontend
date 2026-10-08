@@ -11,8 +11,11 @@ Alle Teile sind zweisprachig (Deutsch, Englisch). Die Sprache wählt man in der 
 ```
 Browser ──► Vue Host-BFF :5010 (ASP.NET Core + YARP, Cookie-Session)
               ├─ /bff/login, /bff/logout, /bff/user   Anmeldung per OIDC (Code + PKCE) am Identity Server
-              ├─ /bff/remotes                         Remote-Konfiguration für die Shell
-              ├─ /remotes/vue-demo/**        ──► Vue Demo-BFF :5011 ──► Remote-UI (Vite :5174)
+              ├─ /bff/remotes                         erreichbare Remotes für die Shell
+              ├─ /bff/registry                        alles über die Remotes, nur für Admins
+              ├─ /registry/remotes/{id}      ◄── Remotes melden sich an (Heartbeat) und ab
+              ├─ /swagger                             Swagger UI der Host-API
+              ├─ /remotes/vue-demo/**        ──► Vue Demo-BFF :5011 ──► Remote-UI (Vite :5174)   (Route aus der Registry)
               ├─ /api/vue-demo/**            ──► Vue Demo-BFF :5011  (Access Token als Bearer, nie das Cookie)
               ├─ /remotes/vue-components/**  ──► Komponenten-Bibliothek (Vite :5175)
               └─ alles andere                ──► Shell (Vite :5173)
@@ -56,7 +59,8 @@ flowchart LR
   remoteBff --> remoteUi
   hostBff -->|"/remotes/…-components"| library
   hostBff -->|"OIDC"| identity
-  remoteBff -->|"Signaturschlüssel"| identity
+  remoteBff -->|"Signaturschlüssel,<br/>eigenes Token"| identity
+  remoteBff -->|"meldet sich an,<br/>Heartbeat"| hostBff
   shell -.->|"lädt Seiten"| remoteUi
   remoteUi -.->|"importiert"| button
   remoteUi -.->|"lädt Texte"| i18n
@@ -105,8 +109,8 @@ In der laufenden Anwendung zeigt der Schalter „Herkunft anzeigen“ im Footer 
 
 ```
 shared/
-  Mfe.HostBff/          Bausteine eines Host-BFF (OIDC + Cookie, CSRF, Token-Refresh, YARP, Remote-Registry, Shell)
-  Mfe.RemoteBff/        Bausteine eines Remote-BFF (JWT Bearer, UI-Hosting)
+  Mfe.HostBff/          Bausteine eines Host-BFF (OIDC + Cookie, CSRF, Token-Refresh, YARP, Remote-Registry, Swagger UI, Shell)
+  Mfe.RemoteBff/        Bausteine eines Remote-BFF (JWT Bearer, UI-Hosting, Anmeldung am Host, Health)
   Mfe.ClientApp/        Oberfläche im BFF-Projekt: Vite-Start mit dotnet run, npm bei Build und Publish
   Mfe.Bff.Tests/        Tests der Bausteine und der Konfiguration beider Varianten
 vue/
@@ -182,11 +186,11 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 
 **CSRF-Schutz.** `/bff/user` und `/api/**` verlangen den Header `X-CSRF: 1`. Shell und Remotes setzen ihn bei jedem Aufruf. Fremde Seiten können den Header nicht ohne CORS-Freigabe senden.
 
-**Remotes.** Welche Remotes und Seiten es gibt, steht in der `appsettings.json` des Host-BFF unter `Remotes`. Die Shell lädt diese Liste beim Start von `/bff/remotes`, registriert die Remotes bei der Module-Federation-Runtime und baut daraus Routen und Navigation. Seiten mit `Roles` sind nur für angemeldete Benutzer mit einer dieser Rollen erreichbar, sonst kommt 401 bzw. 403.
+**Remotes.** Remotes melden sich selbst am Host-BFF an (siehe [Remote-Registry](#remote-registry)). Die Shell lädt die erreichbaren Remotes von `/bff/remotes`, registriert sie bei der Module-Federation-Runtime und baut daraus Routen und Navigation; sie fragt die Liste regelmäßig neu ab, sodass Remotes ohne Neuladen erscheinen und verschwinden. Seiten mit `Roles` sind nur für angemeldete Benutzer mit einer dieser Rollen erreichbar, sonst kommt 401 bzw. 403.
 
 **Komponenten-Bibliothek.** `vue/components` bzw. `react/components` ist ein Remote ohne Seiten, das nur Komponenten (`./Button`) und den gemeinsamen Wortschatz (`./i18n`, siehe unten) exposed. Das Demo-Remote trägt sie in seiner `vite.config.ts` unter `remotes` ein und importiert den Button wie ein Paket: `import Button from 'vueComponents/Button'`. Der Eintrag `/remotes/vue-components/remoteEntry.js` ist relativ und wird gegen die Adresse der Seite aufgelöst, also gegen das Host-BFF. Die Props stehen für TypeScript in `vue-components.d.ts` bzw. `react-components.d.ts` im Remote.
 
-**Mehrsprachigkeit.** Die Shell besitzt die i18n-Instanz (vue-i18n bzw. i18next) und teilt sie als Singleton per Module Federation. Jedes Remote und die Bibliothek bringen ihre Texte selbst mit: In Vue per `useI18n({ useScope: 'local', messages })`, in React als eigener i18next-Namespace (`reactDemo`, `reactComponents`). Die Sprache kommt immer von der Shell: Umschalten im Header ändert Shell, Remote und Bibliothek zugleich. Die Wahl landet im `localStorage` und in `<html lang>`. Beim ersten Besuch entscheidet die Browsersprache. Seitentitel für Navigation und Tab kommen pro Sprache aus der Remote-Konfiguration (`"Title": { "de": "Klick-Demo", "en": "Click demo" }`).
+**Mehrsprachigkeit.** Die Shell besitzt die i18n-Instanz (vue-i18n bzw. i18next) und teilt sie als Singleton per Module Federation. Jedes Remote und die Bibliothek bringen ihre Texte selbst mit: In Vue per `useI18n({ useScope: 'local', messages })`, in React als eigener i18next-Namespace (`reactDemo`, `reactComponents`). Die Sprache kommt immer von der Shell: Umschalten im Header ändert Shell, Remote und Bibliothek zugleich. Die Wahl landet im `localStorage` und in `<html lang>`. Beim ersten Besuch entscheidet die Browsersprache. Seitentitel für Navigation und Tab kommen pro Sprache aus der Anmeldung des Remotes (`"Title": { "de": "Klick-Demo", "en": "Click demo" }`).
 
 **Gemeinsamer Wortschatz.** Begriffe und Sätze, die in mehreren Remotes vorkommen („Promotion“, „Wollen Sie die Promotion wirklich löschen?“), liegen nicht in jedem Remote, sondern einmal in der Komponenten-Bibliothek: `src/common-i18n.ts`, exposed als `./i18n`. Die Bibliothek wird ohnehin von allen Remotes geladen, braucht also keinen eigenen Endpunkt. Ein Remote lädt das Modul beim ersten Gebrauch und trägt die Texte in die geteilte Instanz der Shell ein: in Vue unter `common` in die globalen Messages (`registerCommonMessages`), in React als i18next-Namespace `common` (`registerCommonTexts`). Ist der Namespace schon da, weil ein anderes Remote ihn geladen hat, passiert nichts. Eine Textänderung braucht damit ein Deployment der Bibliothek, Host und Remotes bleiben unberührt.
 
@@ -197,6 +201,146 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 **Geteilte Bibliotheken.** Vue-Teile teilen sich `vue`, `vue-router`, `pinia`, `vue-i18n` und `primevue/*`, React-Teile `react`, `react-dom`, `react-router`, `i18next` und `react-i18next` (jeweils als Singleton).
 
 **Tailwind in Remotes.** Shell, Remotes und Bibliothek bauen ihr CSS getrennt. Damit sich gleiche Utilities nicht gegenseitig überschreiben (z. B. ein `inline-flex` aus dem Remote gegen ein `md:hidden` der Shell), nutzt jedes Remote einen eigenen Tailwind-Prefix: `demo:` im Demo-Remote, `ui:` in der Komponenten-Bibliothek. Preflight und Theme-Werte kommen von der Shell. In React kennt `components.json` den Prefix, sodass `npx shadcn add …` die Klassen gleich mit Prefix erzeugt.
+
+## Remote-Registry
+
+Remotes stehen nicht in der Konfiguration des Host-BFF, sie melden sich selbst an. Ein Remote-BFF schickt beim Start seine Beschreibung an `PUT /registry/remotes/{id}` seines Host-BFF: Seiten mit Route, Titel pro Sprache, Icon und Rollen, dazu die Adresse, unter der der Host es erreicht. Ab dann leitet der Host `/remotes/{id}/` und `/api/{id}/` dorthin weiter und die Shell zeigt die Seiten. Beim Herunterfahren meldet es sich mit `DELETE` wieder ab.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant R as Remote-BFF
+  participant I as Identity Server
+  participant H as Host-BFF
+  participant S as Shell (Browser)
+
+  R->>I: Client Credentials (mfe-vue-demo, Scope vue-registry)
+  I-->>R: Access Token (sub = mfe-vue-demo, aud = vue-registry)
+  R->>H: PUT /registry/remotes/vue-demo (Seiten, Adresse, Version …)
+  H->>R: GET /health
+  H-->>R: 200 registered, heartbeatSeconds = 10
+  Note over H: YARP-Routen /remotes/vue-demo/ und /api/vue-demo/
+  loop alle 10 s
+    R->>H: PUT /registry/remotes/vue-demo (Heartbeat, gleicher Inhalt)
+  end
+  loop alle 10 s
+    H->>R: GET /health
+    S->>H: GET /bff/remotes
+    H-->>S: erreichbare Remotes, Shell passt Routen und Navigation an
+  end
+  R->>H: DELETE /registry/remotes/vue-demo (beim Herunterfahren)
+```
+
+### Was ein Remote übermittelt
+
+| Feld | Bedeutung |
+| --- | --- |
+| `id` (im Pfad) | Pfadsegment für `/remotes/{id}/` und `/api/{id}/`, z. B. `vue-demo`. Muss zu `Ui:BasePath` und der Vite-`base` des Remotes passen. |
+| `federationName` | Module-Federation-Name aus der `vite.config.ts`, z. B. `vueDemo`. |
+| `address` | Wo der Host das Remote-BFF erreicht, z. B. `http://localhost:5011`. |
+| `pages[]` | Je Seite: `path` (Route in der Shell), `title` pro Sprache (Navigation und Tab, Deutsch und Englisch Pflicht), `module` (exposed Modul), `icon` (PrimeIcons-Klasse in Vue, lucide-Name in React), `roles` (wer die Seite sehen darf), `requiresAuth`, `showInNav`, `order` (Reihenfolge in der Navigation). |
+| `version` | Wird auf der Registry-Seite angezeigt; ohne Angabe die Version des Remote-BFF. |
+| `displayName` | Name des Remotes pro Sprache für die Registry-Seite. |
+| `apiScope` | Audience, die die API des Remotes erwartet; ohne Angabe `Jwt:Audience`. Die Registry-Seite warnt, wenn das Host-BFF diesen Scope beim Login nicht anfordert, denn dann lehnt die API die Tokens der Benutzer ab. |
+| `healthPath` | Pfad, den der Host für den Health-Check aufruft, Standard `/health`. |
+
+Im Remote-BFF steht das unter `Registration` in der `appsettings.json` (`Remote` mit den Feldern oben, dazu `HostUrl`, `Address`, `ClientId`, `ClientSecret`, `Scope`), den Rest erledigt `shared/Mfe.RemoteBff/Registration`. Die Antwort des Hosts nennt das Heartbeat-Intervall, der Host gibt den Takt vor.
+
+### Host-Neustart: Heartbeat statt Gedächtnis
+
+Weder Host noch Remotes haben eine Datenhaltung. Der Host hält Anmeldungen deshalb nur im Speicher, als **Lease von 30 s**, und jedes Remote wiederholt seine vollständige Anmeldung **alle 10 s** als Heartbeat. Kommt kein Heartbeat mehr, verwirft der Host die Anmeldung („abgelaufen“).
+
+| | Heartbeat mit Lease (umgesetzt) | Host merkt sich die Anmeldungen (z. B. in einer Datei) |
+| --- | --- | --- |
+| Nach Host-Neustart | Liste nach spätestens einem Heartbeat-Intervall wieder vollständig | Liste sofort da |
+| Abgestürzte Remotes (ohne Abmeldung) | verschwinden von selbst nach Ablauf der Lease | bleiben stehen, bis ein Health-Check sie aussortiert; ein Remote, das es nicht mehr gibt, bleibt für immer in der Datei |
+| Datenhaltung | keine | eine Datei pro Host-Instanz, also doch Zustand, der veralten und kaputtgehen kann |
+| Last | ein kleiner `PUT` pro Remote alle 10 s | nur bei Änderungen |
+| Mehrere Host-Instanzen | jede kennt nur die Remotes, deren Heartbeat bei ihr ankam: Remotes müssten jede Instanz anrufen, oder der Speicher-Port (`IRegistryStore`) bekommt einen geteilten Speicher wie Redis | dasselbe Problem, plus gleichzeitiges Schreiben in die Datei |
+| Konsistenz | die Quelle der Wahrheit ist immer das laufende Remote | Datei und Wirklichkeit können auseinanderlaufen |
+
+Der Heartbeat ist selbstheilend und kommt ohne Zustand aus; das kurze Fenster nach einem Host-Start, in dem Remotes noch fehlen, ist der Preis. Wer es kürzer will, senkt `Registry:HeartbeatInterval`.
+
+### Erreichbarkeit
+
+Der Host prüft alle 10 s die Health-URL jedes Remotes (`Registry:HealthCheckInterval`, Timeout 3 s). Ein neues Remote erscheint erst, wenn sein erster Check gelingt; ein erreichbares fliegt nach **zwei** Fehlschlägen in Folge aus der Navigation (`Registry:FailureThreshold`) und kommt beim nächsten erfolgreichen Check zurück. Die Routen bleiben so lange bestehen, wie die Lease läuft. Die Shell fragt `/bff/remotes` alle 10 s und beim Zurückkehren in den Tab neu ab und passt Routen und Navigation ohne Neuladen an. Ein abgestürztes Remote verschwindet damit nach etwa 20 s aus der Navigation, ein abgemeldetes sofort mit der nächsten Abfrage der Shell.
+
+Das Remote-BFF bietet `/health` (läuft) und `/health/ready` (läuft und ist beim Host angemeldet). Playwright wartet auf `/health/ready`.
+
+### Absicherung
+
+- Die Anmelde-API verlangt ein Access Token des Identity Servers mit der Audience `Registry:Audience` (`vue-registry` bzw. `react-registry`). Jedes Remote-BFF hat dafür einen eigenen Dienst-Client mit Client Credentials (`mfe-vue-demo`, `mfe-react-demo`, siehe Identity-Repo).
+- Die Client-ID (`sub` im Token) wird Eigentümer der Anmeldung: Ein anderer Client kann sie weder ändern noch abmelden (403).
+- Seiten dürfen keine Pfade der Shell belegen (`/`, `/debug`, `/login`, `/401`, `/403`, `/bff`, `/api`, `/remotes`, `/swagger`, … siehe `Registry:ReservedPaths`) und keine eines anderen Remotes (409). Ids, die schon eine statische Route unter `ReverseProxy` haben (die Komponenten-Bibliothek), sind ebenfalls vergeben.
+- Der Host leitet an die Adresse weiter, die das Remote angibt. Wer einen Dienst-Client hat, kann also Verkehr umlenken; Dienst-Clients bekommen deshalb nur vertrauenswürdige Dienste.
+
+### Registry-Seite und Swagger UI
+
+Admins (Rolle `admin`, `Registry:AdminRole`) sehen in der Navigation „Registry“ (`/debug/registry`): angemeldete Remotes mit Status, Version, Adresse, Client, letztem Heartbeat, Lease, Health-URL, letztem Fehler und ihren Seiten mit Titeln, Icons, Rollen und Reihenfolge; darunter abgemeldete und abgelaufene Remotes mit Zeitpunkt und den Verlauf aller Ereignisse (angemeldet, geändert, abgemeldet, abgelaufen, erreichbar, nicht erreichbar, abgelehnt). Die Seite liest `GET /bff/registry`, das ebenfalls nur Admins beantwortet, und aktualisiert sich alle 5 s. Verlauf und Liste sind wie die Anmeldungen nur im Speicher und nach einem Host-Neustart leer.
+
+Die Swagger UI des Host-BFF liegt unter `/swagger` (Vue: http://localhost:5010/swagger, React: http://localhost:5020/swagger), das OpenAPI-Dokument unter `/openapi/v1.json`; `OpenApi:Enabled: false` schaltet beides ab. Zum Ausprobieren der Anmelde-API ein Token holen und unter „Authorize“ eintragen:
+
+```bash
+curl -s http://localhost:5001/connect/token \
+  -d grant_type=client_credentials -d client_id=mfe-vue-demo -d client_secret=dev-secret-change-me -d scope=vue-registry
+```
+
+### Aufbau im Host-BFF (Ports and Adapters)
+
+Die Registry ist hexagonal aufgebaut (`shared/Mfe.HostBff/Registry`). Der Kern kennt weder HTTP noch YARP; was er von außen braucht, beschreibt er als Port, und Adapter erfüllen ihn. So lässt sich der Speicher gegen einen geteilten tauschen oder der Health-Check gegen einen anderen, ohne die Regeln anzufassen, und die Tests ersetzen alle Adapter durch Fakes (`RemoteRegistryTests`).
+
+```mermaid
+flowchart LR
+  subgraph driving["Treibende Adapter"]
+    http["Http/RegistryEndpoints<br/>PUT/DELETE /registry/remotes/{id}<br/>GET /bff/remotes, /bff/registry"]
+    worker["Health/HealthCheckWorker<br/>alle 10 s"]
+  end
+
+  subgraph core["Kern"]
+    app["Application/RemoteRegistry<br/>anmelden, abmelden, prüfen, auflisten"]
+    domain["Domain<br/>RemoteRegistration, RegisteredRemote,<br/>RegistrationRules, RegistryEvent"]
+    ports["Ports<br/>IRegistryStore, IHealthProbe, IRemoteRoutes"]
+  end
+
+  subgraph driven["Getriebene Adapter"]
+    store["Persistence/InMemoryRegistryStore"]
+    probe["Health/HttpHealthProbe"]
+    yarp["Proxy/YarpRemoteRoutes"]
+  end
+
+  http --> app
+  worker --> app
+  app --> domain
+  app --> ports
+  store -.->|implementiert| ports
+  probe -.->|implementiert| ports
+  yarp -.->|implementiert| ports
+
+  classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  class http,worker,app,domain,ports,store,probe,yarp host
+```
+
+Nur `RegistryExtensions` kennt alle Teile und verdrahtet sie. Die HTTP-Verträge (`RegistryContracts.cs`) bilden auf die Domäne ab, damit sich beide unabhängig ändern können. Für den Rest des Host-BFF (Login, Proxy, Shell) lohnt der Aufbau nicht: dort gibt es keine fachlichen Regeln, nur Framework-Konfiguration.
+
+### Einstellungen (`Registry` im Host-BFF)
+
+| Schlüssel | Standard | |
+| --- | --- | --- |
+| `Audience` | – | Audience der Anmelde-Tokens, z. B. `vue-registry` |
+| `LeaseDuration` | `00:00:30` | ohne Heartbeat so lange gültig |
+| `HeartbeatInterval` | `00:00:10` | wird den Remotes in jeder Antwort mitgeteilt |
+| `HealthCheckInterval`, `HealthCheckTimeout` | `00:00:10`, `00:00:03` | |
+| `FailureThreshold` | `2` | Fehlschläge in Folge bis „nicht erreichbar“ |
+| `HistorySize` | `200` | Einträge im Verlauf und in der Liste ehemaliger Remotes |
+| `AdminRole` | `admin` | wer die Registry-Seite sieht |
+| `RequiredLanguages` | `de`, `en` | Pflichtsprachen der Seitentitel |
+| `ReservedPaths`, `ReservedIds` | siehe oben | zusätzliche Einträge werden angehängt |
+
+### Grenzen
+
+- **API-Scopes sind statisch.** Das Access Token der Benutzer bekommt seine Audiences beim Login (`Oidc:Scopes` des Host-BFF, freigegeben beim Client im Identity-Repo). Ein neues Remote mit eigener API braucht dort also weiterhin einen Eintrag; die Registry-Seite zeigt fehlende Scopes an. Dynamisch ginge das nur per Token Exchange pro Remote.
+- **Eine Host-Instanz.** Siehe Tabelle oben: für mehrere Instanzen einen geteilten `IRegistryStore` einsetzen.
+- **Remotes ohne BFF** (wie die Komponenten-Bibliothek) melden sich nicht an und bleiben als statische Route unter `ReverseProxy`.
 
 ## Oberfläche im BFF-Projekt (ClientApp)
 
@@ -221,17 +365,16 @@ Wo Module Federation vom Muster aus YuE-UI abweicht:
 
 1. `vue/remote-demo` bzw. `react/remote-demo` kopieren. In `ClientApp/`: `name` in `package.json`, `base`, `server.port` und den Federation-`name` in `vite.config.ts` anpassen, einen eigenen Tailwind-Prefix wählen (`remote.css`, bei React zusätzlich `components.json` und `src/lib/utils.ts`). Im Projekt selbst: Projektname, Port in `launchSettings.json`, `Ui:BasePath`, `Ui:DevServer`, den Eintrag unter `DevServers` und `Jwt:Audience` anpassen.
 2. Seiten über `exposes` freigeben (`'./MeineSeite': './src/pages/MeineSeite.vue'`), jeweils mit Default-Export und eigenen Texten in Deutsch und Englisch. Texte, die es schon im gemeinsamen Wortschatz gibt, über `src/common.ts` von dort nehmen (die Datei mitkopieren und die Ersatztexte auf die genutzten Keys beschränken).
-3. Den API-Scope im Identity-Repo beim Client des Host-BFF eintragen und im Host-BFF unter `Oidc:Scopes` anfordern.
-4. Im Host-BFF unter `ReverseProxy` die Routen `/remotes/<name>/{**catch-all}` (UI) und `/api/<name>/{**catch-all}` (API, mit `"AuthorizationPolicy": "default"`, `"Bff.AccessToken": "true"` und dem `PathPattern`-Transform) samt Cluster anlegen.
-5. Unter `Remotes` das Remote mit `Entry` und seinen `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`) eintragen.
-6. Das Projekt in `Microfrontend.slnx`, seine `ClientApp` in `workspaces` der `package.json` und das BFF in `e2e/playwright.config.ts` eintragen.
+3. Unter `Registration` in der `appsettings.json` des Remotes `Address`, `ClientId` und unter `Remote` `Id` (gleich dem Pfadsegment von `Ui:BasePath`), `FederationName` und die `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`, `Order`) eintragen; das `ClientSecret` in `appsettings.Development.json` bzw. User Secrets.
+4. Im Identity-Repo einen Dienst-Client für das Remote anlegen (`"GrantTypes": [ "client_credentials" ]`, Scope `<variante>-registry`). Hat das Remote eine API: ihren Scope beim Client des Host-BFF eintragen und im Host-BFF unter `Oidc:Scopes` anfordern. Sonst muss am Host-BFF nichts geändert werden, Routen und Navigation entstehen aus der Anmeldung.
+5. Das Projekt in `Microfrontend.slnx`, seine `ClientApp` in `workspaces` der `package.json` und das BFF in `e2e/playwright.config.ts` eintragen.
 
 Ein Remote lässt sich auch allein entwickeln: `npm run dev -w @mfe/vue-remote-demo` (und für den Button `npm run dev -w @mfe/vue-components`), dann http://localhost:5174/remotes/vue-demo/ öffnen, mit `?lang=en` auf Englisch. Ohne Host-BFF gibt es keine Anmeldung, die Seite zeigt dann „Nicht angemeldet“. Die Komponenten-Bibliothek hat unter http://localhost:5175/remotes/vue-components/ eine eigene Vorschau.
 
 ## Tests
 
 ```bash
-npm run test:bff             # .NET: Host-BFF, Remote-BFF, Konfiguration beider Varianten
+npm run test:bff             # .NET: Host-BFF, Registry, Remote-BFF mit Anmeldung, Konfiguration beider Varianten
 npm run typecheck            # alle Frontends
 npm run build                # Produktions-Builds
 npm run test:e2e             # baut die BFFs, dann Playwright für beide Varianten
@@ -242,7 +385,7 @@ Playwright startet Identity und alle BFFs (die ihre Vite-Server mitbringen) selb
 ## Betrieb
 
 - `dotnet publish vue/host -c Release -o …` liefert das Host-BFF mit der gebauten Shell in `wwwroot`, `dotnet publish vue/remote-demo …` das Demo-BFF mit seiner Remote-UI. Ohne `Shell:DevServer`/`Ui:DevServer` (die nur in `appsettings.Development.json` stehen) liefern die BFFs diese Dateien aus. Die Komponenten-Bibliothek baut `npm run build -w @mfe/vue-components` nach `vue/components/dist`; sie liegt als statische Dateien irgendwo (CDN, Nginx, Blob Storage), der Cluster `<variante>-components` im Host-BFF zeigt dorthin.
-- Die Cluster `<variante>-demo` zeigen in `appsettings.json` auf `localhost`. In Produktion auf die Adresse des Demo-BFF setzen.
+- Ein Remote-BFF meldet sich unter `Registration:HostUrl` an und nennt `Registration:Address` als seine Adresse; beide zeigen in `appsettings.json` auf `localhost`. In Produktion auf die echten Adressen setzen, `Registration:ClientSecret` wie `Oidc:ClientSecret` aus User Secrets bzw. Umgebungsvariablen.
 - `Oidc:ClientSecret` gehört in User Secrets bzw. Umgebungsvariablen (`Oidc__ClientSecret`), nicht in die Datei.
 - Die Session liegt im Cookie (inklusive Tokens, ASP.NET Core teilt große Cookies automatisch). Bei vielen Claims oder mehreren Instanzen eines Host-BFF lohnt ein serverseitiger `ITicketStore` und ein gemeinsamer Data-Protection-Key-Ring.
 - HTTPS: In Development läuft alles über `http://localhost`. In Produktion `Oidc:RequireHttpsMetadata` und `Jwt:RequireHttpsMetadata` auf `true` lassen.

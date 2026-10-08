@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react'
 import { Fragment, useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { navIcons } from '@/components/AppNav'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -272,6 +273,15 @@ export default function RegistryPage() {
   )
 }
 
+function PageIcon({ name }: { name?: string | null }) {
+  const Icon = navIcons[name ?? '']
+  return (
+    <span className="flex items-center gap-2">
+      {Icon && <Icon className="size-4" />} {name ?? '–'}
+    </span>
+  )
+}
+
 function RemoteDetails({
   remote,
   time,
@@ -337,7 +347,9 @@ function RemoteDetails({
                 ))}
               </TableCell>
               <TableCell>{page.module}</TableCell>
-              <TableCell>{page.icon ?? '–'}</TableCell>
+              <TableCell>
+                <PageIcon name={page.icon} />
+              </TableCell>
               <TableCell>
                 <span className={cn('flex flex-wrap gap-1')}>
                   {page.roles.length

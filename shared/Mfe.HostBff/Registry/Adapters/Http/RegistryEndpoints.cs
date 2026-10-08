@@ -89,7 +89,8 @@ public static class RegistryEndpoints
     private static RegistryView View(RemoteRegistry registry, IConfiguration configuration)
     {
         var options = registry.Options;
-        var scopes = configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>()?.Scopes ?? [];
+        // Binding appends the configured scopes to the defaults, hence Distinct.
+        List<string> scopes = [.. (configuration.GetSection(OidcOptions.SectionName).Get<OidcOptions>()?.Scopes ?? []).Distinct()];
         var snapshot = registry.Snapshot();
 
         return new RegistryView(
