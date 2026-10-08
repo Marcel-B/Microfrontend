@@ -47,6 +47,22 @@ test.describe('Lokale Remotes', () => {
     expect(await (await apiRequest).headerValue('authorization')).toMatch(/^Bearer /)
     await expect(page.getByTestId('remote-identity')).toHaveText(`Angemeldet als admin, geprüft von ${variant}-demo-bff.`)
 
+    // XMLHttpRequest (what Axios uses in browsers) goes the same way, with a header of the client's own.
+    const xhrRequest = page.waitForRequest((request) => request.url() === `${api}/api/me` && request.method() === 'GET')
+    const xhr = await page.evaluate(
+      (path) =>
+        new Promise<{ status: number; url: string }>((resolve) => {
+          const request = new XMLHttpRequest()
+          request.open('GET', path)
+          request.setRequestHeader('X-Correlation-Id', 'e2e')
+          request.onloadend = () => resolve({ status: request.status, url: request.responseURL })
+          request.send()
+        }),
+      `/api/${variant}-demo/me`,
+    )
+    expect(xhr).toEqual({ status: 200, url: `${api}/api/me` })
+    expect(await (await xhrRequest).headerValue('authorization')).toMatch(/^Bearer /)
+
     await page.getByTestId('dev-override-reset').click()
     await expect(page.getByTestId('dev-override-banner')).toHaveCount(0)
     await expect(page.getByTestId('remote-identity')).toHaveText(`Angemeldet als admin, geprüft von ${variant}-demo-bff.`)
