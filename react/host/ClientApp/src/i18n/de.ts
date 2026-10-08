@@ -1,7 +1,7 @@
 export default {
   common: { close: 'Schließen' },
   app: { name: 'Microfrontend', variant: 'React' },
-  nav: { label: 'Hauptnavigation', open: 'Navigation öffnen', title: 'Navigation', home: 'Start', debug: 'Debug', registry: 'Registry', system: 'System' },
+  nav: { label: 'Hauptnavigation', open: 'Navigation öffnen', title: 'Navigation', home: 'Start', debug: 'Debug', registry: 'Registry', overrides: 'Lokale Remotes', system: 'System' },
   header: {
     login: 'Anmelden',
     logout: 'Abmelden',
@@ -63,6 +63,36 @@ export default {
     mode: 'Modus',
     language: 'Sprache',
     sessionExpires: 'Sitzung läuft ab',
+  },
+  overrides: {
+    title: 'Lokale Remotes',
+    intro:
+      'Lädt ein Remote, das auf deinem Rechner läuft, statt des Remotes der Stage in diese Shell. Das gilt nur für diesen Browser, andere Benutzer der Stage merken davon nichts. Erlaubt sind nur Adressen auf diesem Rechner.',
+    disabled: 'Auf dieser Stage sind lokale Remotes nicht freigegeben (DevOverrides:Enabled im Host-BFF).',
+    noRemotes: 'Kein Remote angemeldet. Ersetzen lassen sich nur Remotes, die auf der Stage angemeldet sind.',
+    active: 'lokal',
+    deployed: 'Auf der Stage',
+    ui: 'Oberfläche (Vite-Dev-Server)',
+    uiHint: 'Ein Origin wie http://localhost:5184 genügt, den Pfad nimmt die Shell vom Entry der Stage.',
+    api: 'API (Remote-BFF)',
+    apiHint: 'Leer: die API der Stage. Sonst gehen Aufrufe an /api/{{id}}/ mit deinem Access Token an dieses BFF.',
+    invalid: 'Nur http- oder https-Adressen auf diesem Rechner (localhost, 127.0.0.1, [::1]).',
+    save: 'Speichern und neu laden',
+    reset: 'Alle zurücksetzen',
+    setup: 'So startest du ein Remote für diese Stage',
+    steps: {
+      env: 'In der .env des Remote-BFF: Registration__HostUrl leer lassen (sonst meldet es sich an der Stage an und alle sähen deinen Rechner), Jwt__Authority auf den Identity Server der Stage und DevCors__Origins__0={{origin}}.',
+      run: 'Das Remote-BFF mit dotnet run starten. Es startet den Vite-Dev-Server und gibt ihm diese Origin für CORS mit.',
+      save: 'Hier die Adressen eintragen und speichern. Für API-Aufrufe musst du angemeldet sein.',
+      browsers: 'Safari lädt http://localhost nicht in eine HTTPS-Seite, dort braucht der Dev-Server HTTPS. Chrome fragt beim ersten Mal, ob die Seite auf Apps auf deinem Gerät zugreifen darf.',
+    },
+    banner: {
+      text: 'Lokale Remotes in diesem Browser:',
+      ui: 'Oberfläche',
+      api: 'API',
+      settings: 'Einstellungen',
+      reset: 'Zurücksetzen',
+    },
   },
   registry: {
     title: 'Remote-Registry',

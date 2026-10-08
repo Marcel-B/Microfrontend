@@ -4,6 +4,7 @@ import { adminRole } from '../lib/registry'
 import { loadRemoteComponent, type FrontendConfig } from '../lib/remotes'
 import { useAuthStore } from '../stores/auth'
 import DebugView from '../views/DebugView.vue'
+import DevOverridesView from '../views/DevOverridesView.vue'
 import ForbiddenView from '../views/ForbiddenView.vue'
 import HomeView from '../views/HomeView.vue'
 import LoginView from '../views/LoginView.vue'
@@ -36,6 +37,8 @@ export function createAppRouter(frontend: FrontendConfig) {
       { path: '/', name: 'home', component: HomeView, meta: { titleKey: 'nav.home' } },
       ...remoteRoutes(frontend),
       { path: '/debug', name: 'debug', component: DebugView, meta: { titleKey: 'debug.title' } },
+      // Open to everyone: an override only touches the browser that sets it. The page says when the stage does not allow it.
+      { path: '/debug/overrides', name: 'overrides', component: DevOverridesView, meta: { titleKey: 'overrides.title' } },
       {
         path: '/debug/registry',
         name: 'registry',

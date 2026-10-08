@@ -7,6 +7,7 @@ import { useRoute } from 'vue-router'
 import AppFooter from './components/AppFooter.vue'
 import AppHeader from './components/AppHeader.vue'
 import AppNav from './components/AppNav.vue'
+import DevOverrideBanner from './components/DevOverrideBanner.vue'
 import { localized } from './i18n'
 import { useAuthStore } from './stores/auth'
 
@@ -34,6 +35,7 @@ watchEffect(() => {
 <template>
   <div class="flex min-h-full flex-col">
     <AppHeader @toggle-nav="mobileNavOpen = !mobileNavOpen" />
+    <DevOverrideBanner />
     <div class="flex flex-1">
       <aside class="hidden w-60 shrink-0 border-r border-surface-200 p-3 md:block dark:border-surface-800" data-origin="host">
         <AppNav />

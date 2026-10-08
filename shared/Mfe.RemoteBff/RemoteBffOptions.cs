@@ -28,3 +28,17 @@ public sealed class UiOptions
     /// <summary>Folder with the built UI (vite build output), relative to the content root.</summary>
     public string Root { get; set; } = "wwwroot";
 }
+
+/// <summary>
+/// Origins of stage shells that may call this BFF's API from the browser. Bound from the "DevCors" configuration section,
+/// and only meant for a remote BFF on a developer's machine whose UI a stage shell loads (the host BFF's DevOverrides):
+/// the stage's shell then sends the API calls here itself, with the access token as bearer. Set it in the BFF's .env
+/// (DevCors__Origins__0=https://shell.test.example), never on a stage. In Development the BFF hands the list to its
+/// Vite dev server as MFE_DEV_CORS_ORIGINS, so the stage may load the UI's modules too.
+/// </summary>
+public sealed class DevCorsOptions
+{
+    public const string SectionName = "DevCors";
+
+    public List<string> Origins { get; set; } = [];
+}

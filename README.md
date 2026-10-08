@@ -391,6 +391,48 @@ Wo Module Federation vom Muster aus YuE-UI abweicht:
 
 Ein Remote lässt sich auch allein entwickeln: `npm run dev -w @mfe/vue-remote-demo` (und für den Button `npm run dev -w @mfe/vue-components`), dann http://localhost:5174/remotes/vue-demo/ öffnen, mit `?lang=en` auf Englisch. Ohne Host-BFF gibt es keine Anmeldung, die Seite zeigt dann „Nicht angemeldet“. Die Komponenten-Bibliothek hat unter http://localhost:5175/remotes/vue-components/ eine eigene Vorschau.
 
+## Ein Remote lokal gegen eine Stage entwickeln
+
+Wie bei single-spa mit `import-map-overrides` lässt sich ein Remote, das auf dem eigenen Rechner läuft, in die Shell einer Stage einbinden. Alle anderen Remotes, die Anmeldung und die Daten kommen dabei von der Stage. Die Überschreibung liegt im `localStorage` des eigenen Browsers, andere Benutzer der Stage merken davon nichts.
+
+```mermaid
+flowchart LR
+  browser(["Browser auf der Stage-Shell"])
+  subgraph stage["Stage"]
+    hostBff["Host-BFF<br/>DevOverrides:Enabled"]
+    others["andere Remotes"]
+  end
+  subgraph dev["Rechner des Entwicklers"]
+    vite["Remote-UI<br/>Vite :5174"]
+    remoteBff["Remote-BFF :5011<br/>DevCors:Origins"]
+  end
+  browser -->|"Shell, Anmeldung, /bff/dev/token"| hostBff
+  hostBff --> others
+  browser -.->|"remoteEntry.js und Module (CORS)"| vite
+  browser -->|"/api/vue-demo/… als /api/… mit Bearer-Token (CORS)"| remoteBff
+```
+
+So funktioniert es:
+
+- **Oberfläche.** Die Shell meldet ein Runtime-Plugin von Module Federation an (`src/lib/devOverrides.ts` in beiden Shells). Es tauscht im Hook `beforeRegisterRemote` den Entry des Remotes gegen die lokale Adresse. Das Plugin ist für die Instanz der Shell und global angemeldet, deshalb gilt es auch für Remotes, die ein Remote selbst lädt. Dieselbe Technik nutzen die Module Federation Chrome DevTools in ihrem Proxy-Panel.
+- **API.** Auf Wunsch gehen die `fetch`-Aufrufe der Seite an `/api/<id>/` statt an die Stage an das Remote-BFF auf dem eigenen Rechner, mit dem Access Token der Sitzung als Bearer-Token. Das Session-Cookie bekommt das lokale BFF nicht, und die Stage kann den Rechner des Entwicklers nicht erreichen. Deshalb gibt das Host-BFF der Shell das Token über `GET /bff/dev/token`, nur wenn `DevOverrides:Enabled` gesetzt ist und nur mit `X-CSRF`-Header. Umgeleitet wird nur `fetch`, nicht `XMLHttpRequest`.
+- **Freigabe pro Stage.** `DevOverrides:Enabled` ist im Host-BFF standardmäßig aus und in `appsettings.Development.json` an. Auf Entwicklungs- und Test-Stages wird es per Umgebungsvariable `DevOverrides__Enabled=true` eingeschaltet, in Produktion nie. Ist es aus, ignoriert die Shell gespeicherte Überschreibungen, und `/bff/dev/token` antwortet mit 404.
+- **Nur localhost.** Die Shell nimmt nur `http`- und `https`-Adressen auf `localhost`, `127.0.0.1` oder `[::1]` an. So kann ein eingefügtes Snippet die Shell nicht dazu bringen, Code von einem fremden Server zu laden. Solange etwas überschrieben ist, zeigt die Shell unter dem Header einen Hinweis mit „Zurücksetzen“.
+
+Ablauf für ein Remote:
+
+1. In der `.env` des Remote-BFF (Vorlage in `.env.example`) drei Werte setzen. `Registration__HostUrl` bleibt leer, sonst meldet sich der Rechner an der Stage an und alle Benutzer bekämen ihn als Remote. `Jwt__Authority` zeigt auf den Identity Server der Stage, die Audience bleibt gleich. `DevCors__Origins__0` bekommt die Origin der Stage-Shell.
+2. Das Remote-BFF mit `dotnet run` starten. Es erlaubt der Stage-Shell CORS und gibt die Origin als `MFE_DEV_CORS_ORIGINS` an seinen Vite-Server weiter, der sie zusätzlich zu localhost erlaubt. Ohne Freigabe erlaubt Vite nur localhost. `cors: true` ist tabu, sonst könnte jede Website den Quellcode lesen.
+3. In der Stage-Shell unter System › „Lokale Remotes“ (`/debug/overrides`) die Adresse des Vite-Servers eintragen. Ein Origin wie `http://localhost:5174` genügt, den Pfad nimmt die Shell vom Entry der Stage. Optional kommt die Adresse des Remote-BFF dazu, etwa `http://localhost:5011`. Danach speichern, die Seite lädt neu.
+
+Grenzen:
+
+- **Safari** blockiert `http://localhost` in einer HTTPS-Seite als Mixed Content. Dort braucht der Vite-Server HTTPS mit einem vertrauenswürdigen Zertifikat (etwa über mkcert), und die Adresse beginnt mit `https://localhost`.
+- **Chrome** fragt seit Version 142 beim ersten Zugriff einer Seite auf `localhost` nach einer Erlaubnis („Apps auf dem Gerät“). Firefox und Chrome laden `http://localhost` sonst ohne Mixed-Content-Fehler.
+- Nur Remotes, die auf der Stage angemeldet sind, lassen sich ersetzen. Navigation, Rollen und Seiten kommen weiter aus der Registry der Stage.
+- Das Remote läuft im Vite-Dev-Modus in einer Shell aus dem Produktions-Build und übernimmt deren geteilte Pakete. Die Versionen müssen also zusammenpassen.
+- Lokal lässt sich das alles mit `npm run dev` ausprobieren: Dort ist `http://localhost:5010` die „Stage“, die Vite-Server und Remote-BFFs auf ihren eigenen Ports sind der „lokale Rechner“. Der Playwright-Test `e2e/tests/overrides.spec.ts` macht genau das.
+
 ## Tests
 
 ```bash
@@ -406,6 +448,7 @@ Playwright startet Identity und alle BFFs (die ihre Vite-Server mitbringen) selb
 
 - `dotnet publish vue/host -c Release -o …` liefert das Host-BFF mit der gebauten Shell in `wwwroot`, `dotnet publish vue/remote-demo …` das Demo-BFF mit seiner Remote-UI. Ohne `Shell:DevServer`/`Ui:DevServer` (die nur in `appsettings.Development.json` stehen) liefern die BFFs diese Dateien aus. Die Komponenten-Bibliothek baut `npm run build -w @mfe/vue-components` nach `vue/components/dist`; sie liegt als statische Dateien irgendwo (CDN, Nginx, Blob Storage), der Cluster `<variante>-components` im Host-BFF zeigt dorthin.
 - Ein Remote-BFF meldet sich unter `Registration:HostUrl` an und nennt `Registration:Address` als seine Adresse; beide zeigen in `appsettings.json` auf `localhost`. In Produktion auf die echten Adressen setzen, `Registration:ApiKey` (Remote) und `Registry:ApiKeys` (Host) wie `Oidc:ClientSecret` aus User Secrets bzw. Umgebungsvariablen.
+- Lokale Remotes (`DevOverrides:Enabled`) nur auf Entwicklungs- und Test-Stages einschalten (`DevOverrides__Enabled=true`), nie in Produktion: Dann reicht das Host-BFF der Shell das Access Token heraus. `DevCors:Origins` gehört nur in die `.env` auf Entwicklerrechnern, nie auf eine Stage.
 - Pro Stage liegt neben jedem Remote-BFF eine `.env` mit dem Tab-Titel (`Registration__Remote__TabTitle=Test - {title}`), oder die Stage setzt dieselbe Umgebungsvariable.
 - `Oidc:ClientSecret` gehört in User Secrets bzw. Umgebungsvariablen (`Oidc__ClientSecret`), nicht in die Datei.
 - Die Session liegt im Cookie (inklusive Tokens, ASP.NET Core teilt große Cookies automatisch). Bei vielen Claims oder mehreren Instanzen eines Host-BFF lohnt ein serverseitiger `ITicketStore` und ein gemeinsamer Data-Protection-Key-Ring.

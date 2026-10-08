@@ -21,6 +21,9 @@ public sealed class DevServerLauncher(
     /// <summary>A cold Vite start with Module Federation takes a few seconds; npm ci is not part of it.</summary>
     public TimeSpan StartTimeout { get; init; } = TimeSpan.FromSeconds(60);
 
+    /// <summary>Environment variables for the dev servers this launcher starts (not for ones already running).</summary>
+    public IReadOnlyDictionary<string, string> Environment { get; init; } = new Dictionary<string, string>();
+
     private readonly ILogger _logger = loggerFactory.CreateLogger<DevServerLauncher>();
     private readonly HttpClient _probe = new() { Timeout = TimeSpan.FromSeconds(2) };
     private readonly List<Process> _started = [];
@@ -85,6 +88,10 @@ public sealed class DevServerLauncher(
         };
         startInfo.ArgumentList.Add(OperatingSystem.IsWindows() ? "/c" : "-c");
         startInfo.ArgumentList.Add(server.Command);
+        foreach (var (name, value) in Environment)
+        {
+            startInfo.Environment[name] = value;
+        }
 
         _logger.LogInformation("Starting dev server {Name} ({Command} in {Directory})", server.Name, server.Command, directory);
         var process = Process.Start(startInfo)

@@ -42,7 +42,7 @@ test.describe('Remote-Registry', () => {
     const nav = page.getByTestId('app-nav')
 
     await expect(nav.getByRole('list', { name: 'Demo' }).getByRole('link')).toHaveText(['Klick-Demo', 'Administration'])
-    await expect(nav.getByRole('list', { name: 'System' }).getByRole('link')).toHaveText(['Debug', 'Registry'])
+    await expect(nav.getByRole('list', { name: 'System' }).getByRole('link')).toHaveText(['Debug', 'Lokale Remotes', 'Registry'])
     await expect(nav.getByTestId('nav-group').first()).toContainText('Demo')
   })
 

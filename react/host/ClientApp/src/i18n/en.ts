@@ -3,7 +3,7 @@ import type de from './de'
 export default {
   common: { close: 'Close' },
   app: { name: 'Microfrontend', variant: 'React' },
-  nav: { label: 'Main navigation', open: 'Open navigation', title: 'Navigation', home: 'Home', debug: 'Debug', registry: 'Registry', system: 'System' },
+  nav: { label: 'Main navigation', open: 'Open navigation', title: 'Navigation', home: 'Home', debug: 'Debug', registry: 'Registry', overrides: 'Local remotes', system: 'System' },
   header: {
     login: 'Sign in',
     logout: 'Sign out',
@@ -65,6 +65,36 @@ export default {
     mode: 'Mode',
     language: 'Language',
     sessionExpires: 'Session expires',
+  },
+  overrides: {
+    title: 'Local remotes',
+    intro:
+      "Loads a remote running on your machine into this shell instead of the stage's. Only this browser is affected, other users of the stage notice nothing. Only addresses on this machine are allowed.",
+    disabled: 'Local remotes are not allowed on this stage (DevOverrides:Enabled in the host BFF).',
+    noRemotes: 'No remote registered. Only remotes registered on the stage can be replaced.',
+    active: 'local',
+    deployed: 'On the stage',
+    ui: 'UI (Vite dev server)',
+    uiHint: "An origin like http://localhost:5184 is enough, the shell takes the path from the stage's entry.",
+    api: 'API (remote BFF)',
+    apiHint: "Empty: the stage's API. Otherwise calls to /api/{{id}}/ go to this BFF with your access token.",
+    invalid: 'Only http or https addresses on this machine (localhost, 127.0.0.1, [::1]).',
+    save: 'Save and reload',
+    reset: 'Reset all',
+    setup: 'How to run a remote for this stage',
+    steps: {
+      env: "In the remote BFF's .env: leave Registration__HostUrl empty (otherwise it registers at the stage and everyone would get your machine), Jwt__Authority set to the stage's Identity server and DevCors__Origins__0={{origin}}.",
+      run: 'Start the remote BFF with dotnet run. It starts the Vite dev server and passes this origin on for CORS.',
+      save: 'Enter the addresses here and save. API calls need you to be signed in.',
+      browsers: 'Safari does not load http://localhost into an HTTPS page, the dev server needs HTTPS there. Chrome asks once whether the page may access apps on your device.',
+    },
+    banner: {
+      text: 'Local remotes in this browser:',
+      ui: 'UI',
+      api: 'API',
+      settings: 'Settings',
+      reset: 'Reset',
+    },
   },
   registry: {
     title: 'Remote registry',

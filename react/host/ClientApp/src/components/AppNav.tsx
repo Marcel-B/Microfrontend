@@ -1,4 +1,4 @@
-import { FileText, House, Network, Shield, Star, Wrench, type LucideIcon } from 'lucide-react'
+import { FileText, House, Laptop, Network, Shield, Star, Wrench, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
@@ -19,7 +19,7 @@ interface NavItem {
 
 export function AppNav({ onNavigate }: { onNavigate?: () => void }) {
   const auth = useAuth()
-  const { routes } = useFrontend()
+  const { config, routes } = useFrontend()
   const { t, i18n } = useTranslation()
 
   const home: NavItem = { to: '/', label: t('nav.home'), icon: House }
@@ -44,6 +44,7 @@ export function AppNav({ onNavigate }: { onNavigate?: () => void }) {
       name: t('nav.system'),
       pages: [
         { to: '/debug', label: t('nav.debug'), icon: Wrench },
+        ...(config.devOverrides ? [{ to: '/debug/overrides', label: t('nav.overrides'), icon: Laptop }] : []),
         ...(auth.user.isAuthenticated && auth.hasAnyRole([adminRole])
           ? [{ to: '/debug/registry', label: t('nav.registry'), icon: Network }]
           : []),
