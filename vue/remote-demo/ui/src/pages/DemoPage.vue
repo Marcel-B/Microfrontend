@@ -26,7 +26,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="demo:flex demo:flex-col demo:gap-6" data-testid="remote-demo">
+  <div class="demo:flex demo:flex-col demo:gap-6" data-testid="remote-demo" data-origin="remote">
     <h1 class="demo:text-3xl demo:font-semibold">{{ t('demo.title') }}</h1>
     <p class="demo:max-w-2xl demo:text-muted-color">{{ t('demo.intro') }}</p>
 
@@ -46,9 +46,9 @@ onMounted(async () => {
       <template #title>{{ t('vocabulary.title') }}</template>
       <template #content>
         <p class="demo:mb-4 demo:text-sm demo:text-muted-color">{{ t('vocabulary.intro') }}</p>
-        <p class="demo:mb-4 demo:text-sm demo:font-medium">{{ ct('entities.promotion.name') }}: {{ promotionName }}</p>
+        <p class="demo:mb-4 demo:text-sm demo:font-medium"><span data-origin="library">{{ ct('entities.promotion.name') }}</span>: {{ promotionName }}</p>
         <div v-if="deleteState === 'confirm'" class="demo:flex demo:flex-col demo:gap-3">
-          <p class="demo:text-sm" data-testid="delete-confirm">
+          <p class="demo:text-sm" data-testid="delete-confirm" data-origin="library">
             {{ ct('confirm.delete', { entity: ct('entities.promotion.accusative') }) }}
           </p>
           <div class="demo:flex demo:gap-2">
@@ -56,7 +56,7 @@ onMounted(async () => {
             <Button :label="ct('actions.cancel')" variant="secondary" @click="deleteState = 'idle'" />
           </div>
         </div>
-        <p v-else-if="deleteState === 'deleted'" class="demo:text-sm" data-testid="delete-status">{{ ct('status.deleted') }}</p>
+        <p v-else-if="deleteState === 'deleted'" class="demo:text-sm" data-testid="delete-status" data-origin="library">{{ ct('status.deleted') }}</p>
         <Button v-else :label="ct('actions.delete')" icon="pi pi-trash" variant="danger" @click="deleteState = 'confirm'" />
         <p class="demo:mt-4 demo:text-xs demo:text-muted-color" data-testid="vocabulary-source" :data-source="source">
           {{ t(`vocabulary.source.${source}`) }}

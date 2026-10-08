@@ -85,3 +85,27 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Colors of the parts of the platform, the same as in the README diagram. "Herkunft anzeigen" in the footer outlines
+   every area marked with data-origin in the color of the part it comes from (see src/lib/origin.ts). */
+:root {
+  --origin-host: #2563eb;
+  --origin-remote: #16a34a;
+  --origin-library: #9333ea;
+}
+
+html[data-show-origin] [data-origin] {
+  outline: 2px dashed var(--origin-color);
+  outline-offset: -2px;
+}
+html[data-show-origin] [data-origin="host"] {
+  --origin-color: var(--origin-host);
+}
+html[data-show-origin] [data-origin="remote"] {
+  --origin-color: var(--origin-remote);
+  outline-offset: 4px;
+}
+html[data-show-origin] [data-origin="library"] {
+  --origin-color: var(--origin-library);
+  outline-offset: 2px;
+}

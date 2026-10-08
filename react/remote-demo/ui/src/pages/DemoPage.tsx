@@ -22,7 +22,7 @@ export default function DemoPage() {
   }, [])
 
   return (
-    <div className="demo:flex demo:flex-col demo:gap-6" data-testid="remote-demo">
+    <div className="demo:flex demo:flex-col demo:gap-6" data-testid="remote-demo" data-origin="remote">
       <h1 className="demo:text-3xl demo:font-semibold">{t('demo.title')}</h1>
       <p className="demo:max-w-2xl demo:text-muted-foreground">{t('demo.intro')}</p>
 
@@ -58,11 +58,11 @@ export default function DemoPage() {
         <CardContent className="demo:flex demo:flex-col demo:items-start demo:gap-4">
           <p className="demo:text-sm demo:text-muted-foreground">{t('vocabulary.intro')}</p>
           <p className="demo:text-sm demo:font-medium">
-            {ct('entities.promotion.name')}: {promotionName}
+            <span data-origin="library">{ct('entities.promotion.name')}</span>: {promotionName}
           </p>
           {deleteState === 'confirm' && (
             <>
-              <p className="demo:text-sm" data-testid="delete-confirm">
+              <p className="demo:text-sm" data-testid="delete-confirm" data-origin="library">
                 {ct('confirm.delete', { entity: ct('entities.promotion.accusative') })}
               </p>
               <div className="demo:flex demo:gap-2">
@@ -76,7 +76,7 @@ export default function DemoPage() {
             </>
           )}
           {deleteState === 'deleted' && (
-            <p className="demo:text-sm" data-testid="delete-status">
+            <p className="demo:text-sm" data-testid="delete-status" data-origin="library">
               {ct('status.deleted')}
             </p>
           )}

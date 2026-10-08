@@ -14,7 +14,7 @@ export function Layout() {
     <div className="flex min-h-full flex-col">
       <AppHeader onToggleNav={() => setNavOpen((open) => !open)} />
       <div className="flex flex-1">
-        <aside className="hidden w-60 shrink-0 border-r p-3 md:block">
+        <aside className="hidden w-60 shrink-0 border-r p-3 md:block" data-origin="host">
           <AppNav />
         </aside>
         <Sheet open={navOpen} onOpenChange={setNavOpen}>
@@ -23,7 +23,7 @@ export function Layout() {
             <AppNav onNavigate={() => setNavOpen(false)} />
           </SheetContent>
         </Sheet>
-        <main className="min-w-0 flex-1 p-4 md:p-6" data-testid="app-main">
+        <main className="min-w-0 flex-1 p-4 md:p-6" data-testid="app-main" data-origin="host">
           <Outlet />
         </main>
       </div>

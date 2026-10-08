@@ -25,6 +25,82 @@ Browser ──► React Host-BFF :5020 (gleicher Aufbau)
 Identity Server :5001 (eigenes Repo Marcel-B/Identity, OpenIddict + ASP.NET Core Identity, Rollen)
 ```
 
+## Überblick
+
+Die Farben stehen für die Teile einer Variante, in Vue und React gleich: **blau** der Host (Host-BFF und Shell), **grün** das Remote (Remote-BFF und Remote-UI), **lila** die Komponenten-Bibliothek (Komponenten und gemeinsamer Wortschatz), **gelb** der Identity Server. Durchgezogene Pfeile sind HTTP-Aufrufe, gestrichelte das Laden im Browser per Module Federation.
+
+```mermaid
+flowchart LR
+  browser(["Browser"])
+
+  subgraph host["Host"]
+    hostBff["Host-BFF<br/>Anmeldung, Session, Proxy"]
+    shell["Shell<br/>Header, Navigation, Footer,<br/>i18n-Instanz"]
+  end
+
+  subgraph remote["Remote „Demo“"]
+    remoteBff["Remote-BFF<br/>API, prüft das Access Token"]
+    remoteUi["Remote-UI<br/>Seiten Klick-Demo und Administration"]
+  end
+
+  subgraph library["Komponenten-Bibliothek"]
+    button["./Button"]
+    i18n["./i18n<br/>gemeinsamer Wortschatz"]
+  end
+
+  identity[("Identity Server")]
+
+  browser --> hostBff
+  hostBff -->|"/"| shell
+  hostBff -->|"/remotes/…-demo<br/>/api/…-demo mit Access Token"| remoteBff
+  remoteBff --> remoteUi
+  hostBff -->|"/remotes/…-components"| library
+  hostBff -->|"OIDC"| identity
+  remoteBff -->|"Signaturschlüssel"| identity
+  shell -.->|"lädt Seiten"| remoteUi
+  remoteUi -.->|"importiert"| button
+  remoteUi -.->|"lädt Texte"| i18n
+
+  classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef remote fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef library fill:#f3e8ff,stroke:#9333ea,color:#581c87
+  classDef identity fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef neutral fill:#f4f4f5,stroke:#71717a,color:#18181b
+  class hostBff,shell host
+  class remoteBff,remoteUi remote
+  class button,i18n library
+  class identity identity
+  class browser neutral
+  style host fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+  style remote fill:#f0fdf4,stroke:#16a34a,color:#14532d
+  style library fill:#faf5ff,stroke:#9333ea,color:#581c87
+```
+
+Eine Seite der Anwendung setzt sich so zusammen:
+
+```mermaid
+block-beta
+  columns 4
+  header["Header: Titel, Sprache, Anmelden"]:4
+  nav["Navigation"]:1
+  block:page:3
+    columns 1
+    text["Seite aus dem Remote „Demo“:<br/>Überschrift und eigene Texte"]
+    button["Button"]
+    common["„Wollen Sie die Promotion wirklich löschen?“"]
+  end
+  footer["Footer mit Schalter „Herkunft anzeigen“"]:4
+
+  classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef remote fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef library fill:#f3e8ff,stroke:#9333ea,color:#581c87
+  class header,nav,footer host
+  class page,text remote
+  class button,common library
+```
+
+In der laufenden Anwendung zeigt der Schalter „Herkunft anzeigen“ im Footer dieselben Farben: Jeder Bereich bekommt einen gestrichelten Rahmen in der Farbe des Teils, aus dem er kommt. Die Bereiche markieren sich dafür selbst mit `data-origin="host"`, `"remote"` oder `"library"`, die Rahmen zeichnet das CSS der Shell (`src/lib/origin.ts`). Neue Remotes setzen `data-origin="remote"` an das Wurzelelement ihrer Seiten.
+
 ## Aufbau
 
 ```

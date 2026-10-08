@@ -35,5 +35,6 @@ const severity = computed(() => (props.variant === 'primary' ? undefined : props
     :severity="severity"
     class="ui:rounded-full ui:px-5 ui:shadow-sm"
     data-component="vueComponents/Button"
+    data-origin="library"
   />
 </template>

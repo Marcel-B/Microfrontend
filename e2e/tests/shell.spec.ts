@@ -78,6 +78,25 @@ test.describe('Shell', () => {
     await expect(card.getByTestId('delete-confirm')).toHaveText('Wollen Sie die Promotion wirklich löschen?')
   })
 
+  test('outlines shell, remote and component library in their colors on demand', async ({ page, shell }) => {
+    await shell.goto('demo')
+    const remote = page.getByTestId('remote-demo')
+    await expect(remote.getByRole('button', { name: 'Klick mich' })).toBeVisible()
+    await expect(remote).toHaveCSS('outline-style', 'none')
+
+    await page.getByTestId('origin-toggle').click()
+
+    // Same colors as the README diagram: shell blue, remote green, component library purple.
+    await expect(page.getByTestId('app-header')).toHaveCSS('outline-color', 'rgb(37, 99, 235)')
+    await expect(remote).toHaveCSS('outline-color', 'rgb(22, 163, 74)')
+    await expect(remote.getByRole('button', { name: 'Klick mich' })).toHaveCSS('outline-color', 'rgb(147, 51, 234)')
+    await expect(page.getByTestId('origin-legend')).toContainText('Komponenten-Bibliothek')
+
+    // The choice survives a reload.
+    await page.reload()
+    await expect(page.getByTestId('remote-demo')).toHaveCSS('outline-color', 'rgb(22, 163, 74)')
+  })
+
   test('shows 404 for unknown pages', async ({ page, shell }) => {
     await shell.goto('gibt-es-nicht')
 

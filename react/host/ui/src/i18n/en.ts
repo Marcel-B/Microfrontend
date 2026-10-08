@@ -12,7 +12,10 @@ export default {
     language: 'Language',
   },
   languages: { de: 'Deutsch', en: 'English' },
-  footer: { copyright: '© {{year}} Microfrontend platform' },
+  footer: {
+    copyright: '© {{year}} Microfrontend platform',
+    origin: { show: 'Show origin', hide: 'Hide origin', host: 'Shell', remote: 'Remote', library: 'Component library' },
+  },
   home: {
     welcome: 'Welcome',
     welcomeUser: 'Welcome, {{name}}',
