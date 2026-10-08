@@ -10,3 +10,13 @@ declare module 'vueComponents/Button' {
   }>
   export default Button
 }
+
+// Shared vocabulary of all remotes (vue/components/src/common-i18n.ts).
+declare module 'vueComponents/i18n' {
+  export interface MessageTarget {
+    getLocaleMessage(locale: string): object
+    mergeLocaleMessage(locale: string, messages: Record<string, unknown>): void
+  }
+
+  export function registerCommonMessages(target: MessageTarget): void
+}

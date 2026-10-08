@@ -4,10 +4,13 @@ import PrimeVue from 'primevue/config'
 import { createApp, h } from 'vue'
 import { createI18n } from 'vue-i18n'
 import Button from './Button.vue'
+import { registerCommonMessages } from './common-i18n'
 import 'tailwindcss/preflight.css'
 import 'primeicons/primeicons.css'
 
 const i18n = createI18n({ legacy: false, locale: navigator.language.startsWith('en') ? 'en' : 'de', fallbackLocale: 'de' })
+registerCommonMessages(i18n.global)
+const { t } = i18n.global
 
 createApp({
   render: () =>
@@ -16,6 +19,8 @@ createApp({
       h(Button, { label: 'Secondary', variant: 'secondary' }),
       h(Button, { label: 'Danger', variant: 'danger', icon: 'pi pi-trash' }),
       h(Button, { label: 'Loading', loading: true }),
+      // Shared vocabulary ("vueComponents/i18n")
+      h('p', { style: 'flex-basis:100%' }, t('common.confirm.delete', { entity: t('common.entities.promotion.accusative') })),
     ]),
 })
   .use(i18n)

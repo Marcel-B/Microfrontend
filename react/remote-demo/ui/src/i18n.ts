@@ -19,6 +19,16 @@ const resources = {
       identity: 'Angemeldet als {{name}}, geprüft von {{service}}.',
       anonymous: 'Nicht angemeldet: Das Remote-BFF kennt dich nicht.',
     },
+    vocabulary: {
+      title: 'Gemeinsamer Wortschatz',
+      intro:
+        'Begriffe und Sätze, die in mehreren Remotes vorkommen, liefert die Komponenten-Bibliothek als Namespace common. Eine Textänderung braucht nur ein neues Deployment der Bibliothek.',
+      source: {
+        loading: 'Lade gemeinsamen Wortschatz …',
+        library: 'Texte aus der Komponenten-Bibliothek.',
+        fallback: 'Komponenten-Bibliothek nicht erreichbar: Das Remote zeigt seine eigenen Ersatztexte.',
+      },
+    },
     admin: {
       title: 'Administration',
       info: 'Nur Benutzer mit der Rolle admin sehen diese Seite. Die Shell prüft die Rolle anhand der Remote-Konfiguration, das Remote-BFF prüft sie noch einmal am Access Token.',
@@ -39,6 +49,16 @@ const resources = {
       clickMe: 'Click me',
       identity: 'Signed in as {{name}}, checked by {{service}}.',
       anonymous: 'Not signed in: the remote BFF does not know you.',
+    },
+    vocabulary: {
+      title: 'Shared vocabulary',
+      intro:
+        'Terms and sentences that appear in several remotes come from the component library as namespace common. Changing a text only needs a new deployment of the library.',
+      source: {
+        loading: 'Loading shared vocabulary …',
+        library: 'Texts from the component library.',
+        fallback: 'Component library not reachable: the remote shows its own fallback texts.',
+      },
     },
     admin: {
       title: 'Administration',

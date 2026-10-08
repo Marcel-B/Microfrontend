@@ -1,13 +1,19 @@
-import { Server, ShieldAlert, ThumbsUp } from 'lucide-react'
+import { Server, ShieldAlert, ThumbsUp, Trash2 } from 'lucide-react'
 import Button from 'reactComponents/Button'
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { apiGet, type Me } from '../api'
+import { useCommonTranslation } from '../common'
 import { useDemoTranslation } from '../i18n'
 import '../remote.css'
 
+// Example record for the shared delete dialog; its name is data, not a text.
+const promotionName = 'Herbst 2026'
+
 export default function DemoPage() {
   const { t } = useDemoTranslation()
+  const { ct, source } = useCommonTranslation()
+  const [deleteState, setDeleteState] = useState<'idle' | 'confirm' | 'deleted'>('idle')
   const [clicks, setClicks] = useState(0)
   const [me, setMe] = useState<{ loaded: boolean; data: Me | null }>({ loaded: false, data: null })
 
@@ -42,6 +48,46 @@ export default function DemoPage() {
           <Button onClick={() => setClicks((count) => count + 1)}>
             <ThumbsUp /> {t('demo.clickMe')}
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="demo:max-w-md" data-testid="shared-vocabulary">
+        <CardHeader>
+          <CardTitle>{t('vocabulary.title')}</CardTitle>
+        </CardHeader>
+        <CardContent className="demo:flex demo:flex-col demo:items-start demo:gap-4">
+          <p className="demo:text-sm demo:text-muted-foreground">{t('vocabulary.intro')}</p>
+          <p className="demo:text-sm demo:font-medium">
+            {ct('entities.promotion.name')}: {promotionName}
+          </p>
+          {deleteState === 'confirm' && (
+            <>
+              <p className="demo:text-sm" data-testid="delete-confirm">
+                {ct('confirm.delete', { entity: ct('entities.promotion.accusative') })}
+              </p>
+              <div className="demo:flex demo:gap-2">
+                <Button variant="destructive" onClick={() => setDeleteState('deleted')}>
+                  <Trash2 /> {ct('actions.delete')}
+                </Button>
+                <Button variant="secondary" onClick={() => setDeleteState('idle')}>
+                  {ct('actions.cancel')}
+                </Button>
+              </div>
+            </>
+          )}
+          {deleteState === 'deleted' && (
+            <p className="demo:text-sm" data-testid="delete-status">
+              {ct('status.deleted')}
+            </p>
+          )}
+          {deleteState === 'idle' && (
+            <Button variant="destructive" onClick={() => setDeleteState('confirm')}>
+              <Trash2 /> {ct('actions.delete')}
+            </Button>
+          )}
+          <p className="demo:text-xs demo:text-muted-foreground" data-testid="vocabulary-source" data-source={source}>
+            {t(`vocabulary.source.${source}`)}
+          </p>
         </CardContent>
       </Card>
 

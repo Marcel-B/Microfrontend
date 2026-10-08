@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
-// Component library as its own remote. It only exposes components (no pages) and has no BFF: the host BFF
+// Component library as its own remote. It only exposes components and the shared vocabulary (no pages) and has no BFF: the host BFF
 // serves it under /remotes/vue-components/ like any static asset. Other remotes import it as "vueComponents/...".
 export default defineConfig({
   base: '/remotes/vue-components/',
@@ -27,6 +27,8 @@ export default defineConfig({
       filename: 'remoteEntry.js',
       exposes: {
         './Button': './src/Button.vue',
+        // Shared vocabulary ("common.…") for all remotes, see src/common-i18n.ts.
+        './i18n': './src/common-i18n.ts',
       },
       shared: {
         vue: { singleton: true },
