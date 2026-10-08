@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
 
@@ -36,5 +37,20 @@ internal static class TestApps
         configureApp(app);
         await app.StartAsync();
         return app;
+    }
+
+    /// <summary>
+    /// A stand-in for a Vite dev server on a free local port (the forwarders need a real socket) that answers every
+    /// request with the Cookie header it received, or "no cookie".
+    /// </summary>
+    public static async Task<(WebApplication App, string Url)> StartDevServerAsync()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
+        var app = builder.Build();
+        app.Run(context => context.Response.WriteAsync(
+            context.Request.Headers.Cookie is { Count: > 0 } cookie ? cookie.ToString() : "no cookie"));
+        await app.StartAsync();
+        return (app, app.Urls.Single());
     }
 }
