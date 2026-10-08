@@ -1,5 +1,6 @@
 import { loadRemote, registerRemotes } from '@module-federation/runtime'
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react'
+import { activateOverrides, type RemoteOverrides } from './devOverrides'
 
 export interface RemotePage {
   path: string
@@ -34,6 +35,10 @@ export interface RemoteDefinition {
 export interface FrontendConfig {
   /** The remotes the host BFF currently reaches. Remotes register themselves there and leave when unreachable. */
   remotes: RemoteDefinition[]
+  /** This stage lets developers load remotes from their own machine (host BFF DevOverrides:Enabled). */
+  devOverrides?: boolean
+  /** The local overrides active in this browser (see devOverrides.ts); empty unless devOverrides is set. */
+  overrides?: RemoteOverrides
   /** Set when the BFF could not be reached; the shell keeps the remotes it had. */
   error?: string
 }
@@ -80,6 +85,8 @@ export async function loadFrontendConfig(): Promise<FrontendConfig> {
   } catch (error) {
     return { remotes: [], error: String(error) }
   }
+  // Before the first registerRemotes(): the overrides change entries as remotes register.
+  config.overrides = config.devOverrides ? activateOverrides() : {}
 
   const added = config.remotes.filter((remote) => !registered.has(remote.name))
   if (added.length) {

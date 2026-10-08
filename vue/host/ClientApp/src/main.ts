@@ -18,6 +18,8 @@ watchFrontendConfig(
   () => frontend,
   (next) => {
     frontend.remotes = next.remotes
+    frontend.devOverrides = next.devOverrides
+    frontend.overrides = next.overrides
     frontend.error = next.error
     void syncRemoteRoutes(router, frontend)
   },

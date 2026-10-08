@@ -34,6 +34,7 @@ public static class RemoteBffExtensions
             });
 
         builder.Services.AddAuthorization();
+        builder.Services.AddDevCors(builder.Configuration);
         builder.Services.AddHttpForwarder();
         builder.Services.AddProblemDetails();
         builder.Services.AddHostRegistration(builder.Configuration);
@@ -44,6 +45,8 @@ public static class RemoteBffExtensions
 
     public static WebApplication UseRemoteBff(this WebApplication app)
     {
+        // Before authentication: a preflight carries no token and must not end as 401.
+        app.UseCors();
         app.UseAuthentication();
         app.UseAuthorization();
 
@@ -51,6 +54,33 @@ public static class RemoteBffExtensions
         app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = check => !check.Tags.Contains(RegistrationExtensions.ReadyTag) });
         app.MapHealthChecks("/health/ready");
         return app;
+    }
+
+    /// <summary>
+    /// CORS for the stage shells listed under "DevCors:Origins" (see <see cref="DevCorsOptions"/>). Without origins there
+    /// is no policy, so a BFF behind its host never allows cross-origin requests.
+    /// </summary>
+    private static IServiceCollection AddDevCors(this IServiceCollection services, IConfiguration configuration)
+    {
+        var origins = (configuration.GetSection(DevCorsOptions.SectionName).Get<DevCorsOptions>() ?? new DevCorsOptions()).Origins
+            .Where(origin => !string.IsNullOrWhiteSpace(origin))
+            .Select(origin => origin.TrimEnd('/'))
+            .ToArray();
+
+        services.AddCors(options =>
+        {
+            if (origins.Length == 0)
+            {
+                return;
+            }
+
+            options.AddDefaultPolicy(policy => policy
+                .WithOrigins(origins)
+                // The shell's bffFetch sends X-CSRF; the bearer token replaces the cookie, so no credentials.
+                .WithHeaders("Authorization", "Content-Type", "X-CSRF")
+                .AllowAnyMethod());
+        });
+        return services;
     }
 
     /// <summary>

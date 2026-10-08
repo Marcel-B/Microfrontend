@@ -5,6 +5,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { AppFooter } from './AppFooter'
 import { AppHeader } from './AppHeader'
 import { AppNav } from './AppNav'
+import { DevOverrideBanner } from './DevOverrideBanner'
 
 export function Layout() {
   const [navOpen, setNavOpen] = useState(false)
@@ -13,6 +14,7 @@ export function Layout() {
   return (
     <div className="flex min-h-full flex-col">
       <AppHeader onToggleNav={() => setNavOpen((open) => !open)} />
+      <DevOverrideBanner />
       <div className="flex flex-1">
         <aside className="hidden w-60 shrink-0 border-r p-3 md:block" data-origin="host">
           <AppNav />

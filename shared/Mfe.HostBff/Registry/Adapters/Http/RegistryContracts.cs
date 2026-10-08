@@ -85,8 +85,11 @@ public sealed record RegistrationResponse(
     int LeaseSeconds,
     int HeartbeatSeconds);
 
-/// <summary>Response of GET /bff/remotes: the reachable remotes the shell loads.</summary>
-public sealed record ShellRemotes(IReadOnlyList<ShellRemote> Remotes);
+/// <summary>
+/// Response of GET /bff/remotes: the reachable remotes the shell loads, and whether this stage lets developers replace
+/// them with ones on their own machine (DevOverrides:Enabled).
+/// </summary>
+public sealed record ShellRemotes(IReadOnlyList<ShellRemote> Remotes, bool DevOverrides);
 
 public sealed record ShellRemote(string Id, string Name, string Entry, string? Version, string Group, IReadOnlyList<ShellPage> Pages)
 {

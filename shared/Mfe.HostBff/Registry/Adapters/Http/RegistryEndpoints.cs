@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using Mfe.HostBff.DevOverrides;
 using Mfe.HostBff.Options;
 using Mfe.HostBff.Registry.Application;
 using Mfe.HostBff.Registry.Domain;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace Mfe.HostBff.Registry.Adapters.Http;
 
@@ -28,8 +30,8 @@ public static class RegistryEndpoints
         remotes.MapDelete("/{id}", Deregister)
             .WithSummary("Deregisters a remote, e.g. when it shuts down");
 
-        app.MapGet("/bff/remotes", (RemoteRegistry registry) =>
-                new ShellRemotes([.. registry.Reachable().Select(ShellRemote.From)]))
+        app.MapGet("/bff/remotes", (RemoteRegistry registry, IOptionsMonitor<DevOverridesOptions> devOverrides) =>
+                new ShellRemotes([.. registry.Reachable().Select(ShellRemote.From)], devOverrides.CurrentValue.Enabled))
             .WithTags("Shell")
             .WithSummary("Reachable remotes with their pages, for the shell's routes and navigation");
 

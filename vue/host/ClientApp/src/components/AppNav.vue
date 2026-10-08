@@ -32,6 +32,7 @@ const groups = computed<NavGroup<NavItem>[]>(() => [
     name: t('nav.system'),
     pages: [
       { to: '/debug', label: t('nav.debug'), icon: 'pi pi-wrench' },
+      ...(frontend.devOverrides ? [{ to: '/debug/overrides', label: t('nav.overrides'), icon: 'pi pi-desktop' }] : []),
       ...(auth.isAuthenticated && auth.hasAnyRole([adminRole])
         ? [{ to: '/debug/registry', label: t('nav.registry'), icon: 'pi pi-sitemap' }]
         : []),

@@ -8,6 +8,7 @@ import { localized } from './i18n'
 import { useFrontend } from './lib/frontend'
 import { adminRole } from './lib/registry'
 import DebugPage from './pages/DebugPage'
+import DevOverridesPage from './pages/DevOverridesPage'
 import RegistryPage from './pages/RegistryPage'
 import { ForbiddenPage, NotFoundPage, UnauthorizedPage } from './pages/StatusPages'
 import HomePage from './pages/HomePage'
@@ -42,6 +43,7 @@ export default function App() {
             )
           })}
           <Route path="debug" element={<DebugPage />} />
+          <Route path="debug/overrides" element={<DevOverridesPage />} />
           <Route
             path="debug/registry"
             element={
@@ -64,6 +66,7 @@ const shellTitles: Record<string, string> = {
   '/': 'nav.home',
   '/debug': 'debug.title',
   '/debug/registry': 'registry.title',
+  '/debug/overrides': 'overrides.title',
   '/login': 'login.title',
   '/401': 'status.unauthorized.title',
   '/403': 'status.forbidden.title',
