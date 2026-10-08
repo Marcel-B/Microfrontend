@@ -69,6 +69,20 @@ public sealed class RemoteBffTests : IAsyncLifetime
         Assert.Equal("export {}", await response.Content.ReadAsStringAsync());
     }
 
+    [Fact]
+    public async Task Ui_dev_server_never_sees_cookies()
+    {
+        var (devServer, url) = await TestApps.StartDevServerAsync();
+        await using var _ = devServer;
+        await using var app = await StartRemoteBffAsync(new() { ["Ui:DevServer"] = url });
+        var client = app.GetTestClient();
+        client.DefaultRequestHeaders.Add("Cookie", "mfe.vue.sessionC1=abc");
+
+        var response = await client.GetStringAsync("/remotes/vue-demo/remoteEntry.js");
+
+        Assert.Equal("no cookie", response);
+    }
+
     private HttpClient ClientWithToken(string token)
     {
         var client = _app.GetTestClient();

@@ -1,6 +1,7 @@
 using Mfe.ClientApp;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
+using Yarp.ReverseProxy.Transforms;
 
 namespace Mfe.RemoteBff;
 
@@ -53,7 +54,10 @@ public static class RemoteBffExtensions
 
         if (!string.IsNullOrEmpty(options.DevServer))
         {
-            app.MapForwarder($"{basePath.TrimEnd('/')}/{{**catch-all}}", options.DevServer);
+            // The host BFF already drops cookies; this covers the remote BFF's own port opened in the browser, which
+            // would hand Vite every localhost cookie (431 above Node's 16 KB header limit).
+            app.MapForwarder($"{basePath.TrimEnd('/')}/{{**catch-all}}", options.DevServer,
+                transforms => transforms.AddRequestHeaderRemove("Cookie"));
             return app;
         }
 
