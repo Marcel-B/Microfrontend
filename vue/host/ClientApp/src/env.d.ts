@@ -8,6 +8,8 @@ declare module 'vue-router' {
     titleKey?: string
     /** Title per language for remote pages (from the host BFF). */
     titles?: Record<string, string>
+    /** Tab title per language a remote page brings along, shown instead of the shell's. */
+    tabTitles?: Record<string, string>
     requiresAuth?: boolean
     /** The user needs at least one of these roles. */
     roles?: string[]

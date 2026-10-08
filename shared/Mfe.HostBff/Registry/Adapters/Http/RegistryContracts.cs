@@ -50,7 +50,7 @@ public sealed class RegisterPageRequest
     [Description("Route in the shell, e.g. \"/demo\".")]
     public required string Path { get; init; }
 
-    [Description("Navigation entry and tab title per language, e.g. { \"de\": \"Klick-Demo\", \"en\": \"Click demo\" }.")]
+    [Description("Navigation entry per language, e.g. { \"de\": \"Klick-Demo\", \"en\": \"Click demo\" }.")]
     public Dictionary<string, string> Title { get; init; } = [];
 
     [Description("Exposed module of the remote with the page as default export, e.g. \"./DemoPage\".")]
@@ -69,7 +69,10 @@ public sealed class RegisterPageRequest
     [Description("Position in the navigation group; lower comes first. Groups are ordered by their lowest entry.")]
     public int Order { get; init; }
 
-    public RemotePage ToDomain() => new(Path, Title, Module, Icon, RequiresAuth, Roles, ShowInNav, Order);
+    [Description("Browser tab title per language, stage-dependent, e.g. { \"de\": \"Test - Klick-Demo\" }. A language without one gets the shell's tab title.")]
+    public Dictionary<string, string> TabTitle { get; init; } = [];
+
+    public RemotePage ToDomain() => new(Path, Title, Module, Icon, RequiresAuth, Roles, ShowInNav, Order, TabTitle);
 }
 
 /// <summary>Answer to a registration or heartbeat. The remote takes its heartbeat interval from here.</summary>
@@ -104,10 +107,11 @@ public sealed record ShellPage(
     bool RequiresAuth,
     IReadOnlyList<string> Roles,
     bool ShowInNav,
-    int Order)
+    int Order,
+    IReadOnlyDictionary<string, string> TabTitle)
 {
     public static ShellPage From(RemotePage page) =>
-        new(page.Path, page.Title, page.Module, page.Icon, page.NeedsLogin, page.Roles, page.ShowInNav, page.Order);
+        new(page.Path, page.Title, page.Module, page.Icon, page.NeedsLogin, page.Roles, page.ShowInNav, page.Order, page.TabTitle);
 }
 
 /// <summary>Response of GET /bff/registry: everything the registry knows, for admins.</summary>

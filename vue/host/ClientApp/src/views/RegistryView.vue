@@ -171,6 +171,14 @@ function name(texts: Record<string, string>, fallback: string): string {
                       </span>
                     </template>
                   </Column>
+                  <Column :header="t('registry.tabTitle')">
+                    <template #body="{ data: page }">
+                      <span v-for="(text, language) in page.tabTitle" :key="language" class="mr-2">
+                        <span class="text-muted-color">{{ language }}:</span> {{ text }}
+                      </span>
+                      <span v-if="!Object.keys(page.tabTitle ?? {}).length" class="text-muted-color">{{ t('registry.shellTabTitle') }}</span>
+                    </template>
+                  </Column>
                   <Column field="module" :header="t('debug.module')" />
                   <Column :header="t('registry.icon')">
                     <template #body="{ data: page }">

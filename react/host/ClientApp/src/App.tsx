@@ -77,6 +77,12 @@ function DocumentTitle() {
 
   useEffect(() => {
     const remote = routes.find((route) => route.path === pathname)
+    // A remote page may bring its own (stage-dependent) tab title.
+    const own = remote?.tabTitle?.[i18n.language]
+    if (own) {
+      document.title = own
+      return
+    }
     const title = remote ? localized(remote.title, i18n.language) : t(shellTitles[pathname] ?? 'status.notFound.title')
     document.title = `${title} · ${t('app.name')} ${t('app.variant')}`
   }, [pathname, routes, t, i18n.language])

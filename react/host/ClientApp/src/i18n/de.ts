@@ -96,6 +96,8 @@ export default {
     lastError: 'Letzter Fehler',
     registeredAt: 'Angemeldet seit',
     pageTitle: 'Titel',
+    tabTitle: 'Tab-Titel',
+    shellTabTitle: 'von der Shell',
     icon: 'Icon',
     signedIn: 'angemeldete Benutzer',
     nav: 'Navigation',

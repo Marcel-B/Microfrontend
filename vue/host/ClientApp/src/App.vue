@@ -18,8 +18,13 @@ const mobileNavOpen = ref(false)
 const route = useRoute()
 watch(() => route.fullPath, () => (mobileNavOpen.value = false))
 
-// Tab title follows both the route and the language.
+// Tab title follows both the route and the language. A remote page may bring its own (stage-dependent) one.
 watchEffect(() => {
+  const own = route.meta.tabTitles?.[locale.value]
+  if (own) {
+    document.title = own
+    return
+  }
   const app = `${t('app.name')} ${t('app.variant')}`
   const title = route.meta.titles ? localized(route.meta.titles, locale.value) : route.meta.titleKey ? t(route.meta.titleKey) : ''
   document.title = title ? `${title} · ${app}` : app

@@ -153,8 +153,45 @@ public sealed class HostRegistration(
             remote.Group,
             remote.ApiScope,
             remote.HealthPath,
-            remote.Pages,
+            Pages = remote.Pages.Select(page => new
+            {
+                page.Path,
+                page.Title,
+                page.Module,
+                page.Icon,
+                page.RequiresAuth,
+                page.Roles,
+                page.ShowInNav,
+                page.Order,
+                TabTitle = TabTitles(remote.TabTitle, page),
+            }),
         };
+    }
+
+    /// <summary>
+    /// The page's tab title per language: its own template if it has one for the language, else the remote's, with
+    /// "{title}" replaced by the page's title. Languages without a template are left out; the shell then uses its own.
+    /// </summary>
+    internal static Dictionary<string, string> TabTitles(string? remoteTemplate, PageDescription page)
+    {
+        var titles = new Dictionary<string, string>();
+        foreach (var language in page.Title.Keys.Union(page.TabTitle.Keys))
+        {
+            var template = page.TabTitle.GetValueOrDefault(language);
+            if (string.IsNullOrWhiteSpace(template))
+            {
+                template = remoteTemplate;
+            }
+
+            if (string.IsNullOrWhiteSpace(template))
+            {
+                continue;
+            }
+
+            titles[language] = template.Replace("{title}", page.Title.GetValueOrDefault(language) ?? string.Empty, StringComparison.Ordinal).Trim();
+        }
+
+        return titles;
     }
 
     private string Address()

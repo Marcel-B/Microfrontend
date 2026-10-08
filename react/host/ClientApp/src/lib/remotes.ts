@@ -12,6 +12,11 @@ export interface RemotePage {
   showInNav: boolean
   /** Position in the navigation group; lower comes first. */
   order: number
+  /**
+   * Browser tab title per language, set by the remote per stage, e.g. { de: 'Test - Klick-Demo' }. Shown as it is;
+   * a language without one gets the shell's own tab title.
+   */
+  tabTitle?: Record<string, string>
 }
 
 export interface RemoteDefinition {

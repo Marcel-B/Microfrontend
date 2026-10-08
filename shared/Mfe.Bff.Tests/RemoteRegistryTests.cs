@@ -213,7 +213,7 @@ public sealed class RemoteRegistryTests
 
     private static RemotePage Page(string path) => new(
         path, new Dictionary<string, string> { ["de"] = "Klick-Demo", ["en"] = "Click demo" }, "./DemoPage", "pi pi-star",
-        RequiresAuth: false, Roles: [], ShowInNav: true, Order: 0);
+        RequiresAuth: false, Roles: [], ShowInNav: true, Order: 0, TabTitle: new Dictionary<string, string>());
 
     private sealed class FakeProbe : IHealthProbe
     {

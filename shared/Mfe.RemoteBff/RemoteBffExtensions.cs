@@ -17,6 +17,8 @@ public static class RemoteBffExtensions
 {
     public static WebApplicationBuilder AddRemoteBff(this WebApplicationBuilder builder)
     {
+        // Stage-dependent values such as the tab title, between appsettings and the stage's environment variables.
+        builder.Configuration.AddDotEnvFile(Path.Combine(builder.Environment.ContentRootPath, DotEnv.FileName));
         var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 
         builder.Services

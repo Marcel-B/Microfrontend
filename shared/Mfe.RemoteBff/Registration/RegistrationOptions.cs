@@ -46,6 +46,13 @@ public sealed class RemoteDescription
     /// <summary>Navigation group the remote's pages appear under in the shell, e.g. "Demo".</summary>
     public string Group { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Browser tab title of every page, a template where "{title}" stands for the page's title in each language, e.g.
+    /// "Test - {title}". It differs per stage, so it belongs in the BFF's .env (Registration__Remote__TabTitle) or the
+    /// stage's environment, not in appsettings.json. Empty: the shell's own tab title.
+    /// </summary>
+    public string? TabTitle { get; set; }
+
     /// <summary>Audience the remote's API expects. Empty: "Jwt:Audience".</summary>
     public string? ApiScope { get; set; }
 
@@ -59,7 +66,7 @@ public sealed class PageDescription
     /// <summary>Route in the shell, e.g. "/demo".</summary>
     public string Path { get; set; } = string.Empty;
 
-    /// <summary>Navigation entry and tab title per language.</summary>
+    /// <summary>Navigation entry per language; also the "{title}" in the tab title.</summary>
     public Dictionary<string, string> Title { get; set; } = [];
 
     /// <summary>Exposed module with the page as default export, e.g. "./DemoPage".</summary>
@@ -76,4 +83,7 @@ public sealed class PageDescription
 
     /// <summary>Position in the navigation group; lower comes first.</summary>
     public int Order { get; set; }
+
+    /// <summary>Tab title of this page per language, overriding <see cref="RemoteDescription.TabTitle"/>; "{title}" works here too.</summary>
+    public Dictionary<string, string> TabTitle { get; set; } = [];
 }

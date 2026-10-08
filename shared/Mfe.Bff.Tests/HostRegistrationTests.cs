@@ -46,6 +46,7 @@ public sealed class HostRegistrationTests : IAsyncLifetime
             ["Registration:HostUrl"] = _hostUrl,
             ["Registration:Address"] = "http://localhost:5011",
             ["Registration:ApiKey"] = "key-of-vue-demo",
+            ["Registration:Remote:TabTitle"] = "Test - {title}",
         });
 
         await WaitUntilAsync(async () => (await remote.GetTestClient().GetAsync("/health/ready")).StatusCode == HttpStatusCode.OK);
@@ -62,6 +63,9 @@ public sealed class HostRegistrationTests : IAsyncLifetime
         Assert.Equal("vue-demo-api", body.GetProperty("apiScope").GetString());
         Assert.Equal("Demo", body.GetProperty("group").GetString());
         Assert.Equal(["/demo", "/admin"], body.GetProperty("pages").EnumerateArray().Select(p => p.GetProperty("path").GetString()));
+        var tabTitle = body.GetProperty("pages")[0].GetProperty("tabTitle");
+        Assert.Equal("Test - Klick-Demo", tabTitle.GetProperty("de").GetString());
+        Assert.Equal("Test - Click demo", tabTitle.GetProperty("en").GetString());
 
         Assert.Equal("DELETE", _calls.Last().Method);
         Assert.Equal("/registry/remotes/vue-demo", _calls.Last().Path);
