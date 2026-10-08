@@ -1,13 +1,14 @@
-import { FileText, House, Shield, Star, Wrench, type LucideIcon } from 'lucide-react'
+import { FileText, House, Network, Shield, Star, Wrench, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
 import { localized } from '@/i18n'
 import { useFrontend } from '@/lib/frontend'
+import { adminRole } from '@/lib/registry'
 import { cn } from '@/lib/utils'
 
 /** Icons the BFF config may reference by name. Extend as remotes need more. */
-const icons: Record<string, LucideIcon> = { house: House, star: Star, shield: Shield, wrench: Wrench }
+const icons: Record<string, LucideIcon> = { house: House, star: Star, shield: Shield, wrench: Wrench, network: Network }
 
 interface NavItem {
   to: string
@@ -29,6 +30,9 @@ export function AppNav({ onNavigate }: { onNavigate?: () => void }) {
       )
       .map((page) => ({ to: page.path, label: localized(page.title, i18n.language), icon: icons[page.icon ?? ''] ?? FileText })),
     { to: '/debug', label: t('nav.debug'), icon: Wrench },
+    ...(auth.user.isAuthenticated && auth.hasAnyRole([adminRole])
+      ? [{ to: '/debug/registry', label: t('nav.registry'), icon: Network }]
+      : []),
   ]
 
   return (

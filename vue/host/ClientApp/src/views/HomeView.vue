@@ -3,7 +3,7 @@ import Card from 'primevue/card'
 import { inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localized } from '../i18n'
-import { frontendKey } from '../lib/remotes'
+import { frontendKey, pagesInOrder } from '../lib/remotes'
 import { useAuthStore } from '../stores/auth'
 
 const frontend = inject(frontendKey)!
@@ -18,7 +18,7 @@ const { t, locale } = useI18n()
     </h1>
     <p class="max-w-2xl text-muted-color">{{ t('home.intro') }}</p>
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      <Card v-for="page in frontend.remotes.flatMap((r) => r.pages)" :key="page.path">
+      <Card v-for="page in pagesInOrder(frontend)" :key="page.path">
         <template #title>
           <span class="flex items-center gap-2"><i :class="page.icon ?? 'pi pi-file'" /> {{ localized(page.title, locale) }}</span>
         </template>

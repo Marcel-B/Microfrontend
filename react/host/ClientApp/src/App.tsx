@@ -6,7 +6,9 @@ import { Layout } from './components/Layout'
 import { RemoteBoundary } from './components/RemoteBoundary'
 import { localized } from './i18n'
 import { useFrontend } from './lib/frontend'
+import { adminRole } from './lib/registry'
 import DebugPage from './pages/DebugPage'
+import RegistryPage from './pages/RegistryPage'
 import { ForbiddenPage, NotFoundPage, UnauthorizedPage } from './pages/StatusPages'
 import HomePage from './pages/HomePage'
 import LoginPage from './pages/LoginPage'
@@ -40,6 +42,14 @@ export default function App() {
             )
           })}
           <Route path="debug" element={<DebugPage />} />
+          <Route
+            path="debug/registry"
+            element={
+              <RequireAuth roles={[adminRole]}>
+                <RegistryPage />
+              </RequireAuth>
+            }
+          />
           <Route path="login" element={<LoginPage />} />
           <Route path="401" element={<UnauthorizedPage />} />
           <Route path="403" element={<ForbiddenPage />} />
@@ -53,6 +63,7 @@ export default function App() {
 const shellTitles: Record<string, string> = {
   '/': 'nav.home',
   '/debug': 'debug.title',
+  '/debug/registry': 'registry.title',
   '/login': 'login.title',
   '/401': 'status.unauthorized.title',
   '/403': 'status.forbidden.title',
