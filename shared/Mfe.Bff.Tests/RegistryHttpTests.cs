@@ -78,6 +78,9 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         var admin = remote.GetProperty("pages").EnumerateArray().Single(p => p.GetProperty("path").GetString() == "/admin");
         Assert.True(admin.GetProperty("requiresAuth").GetBoolean());
         Assert.Equal("Administration", admin.GetProperty("title").GetProperty("en").GetString());
+        Assert.Empty(admin.GetProperty("tabTitle").EnumerateObject());
+        var demo = remote.GetProperty("pages").EnumerateArray().Single(p => p.GetProperty("path").GetString() == "/demo");
+        Assert.Equal("Test - Klick-Demo", demo.GetProperty("tabTitle").GetProperty("de").GetString());
 
         var client = _host.GetTestClient();
         client.DefaultRequestHeaders.Add("Cookie", "mfe.vue.session=abc");
@@ -131,6 +134,7 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         var invalid = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(module: "DemoPage"));
         var withoutGroup = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(group: " "));
         var colliding = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(path: "/debug"));
+        var longTabTitle = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(tabTitle: new string('x', 201)));
 
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         Assert.Contains("pages[0].module", await invalid.Content.ReadAsStringAsync());
@@ -138,6 +142,8 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         Assert.Contains("\"group\"", await withoutGroup.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.Conflict, colliding.StatusCode);
         Assert.Contains("belongs to the shell", await colliding.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, longTabTitle.StatusCode);
+        Assert.Contains("pages[0].tabTitle.de", await longTabTitle.Content.ReadAsStringAsync());
     }
 
     [Fact]
@@ -203,7 +209,7 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         return client;
     }
 
-    private object Registration(string path = "/demo", string module = "./DemoPage", string group = "Demo") => new
+    private object Registration(string path = "/demo", string module = "./DemoPage", string group = "Demo", string tabTitle = "Test - Klick-Demo") => new
     {
         federationName = "vueDemo",
         address = _remoteUrl,
@@ -213,7 +219,7 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         healthPath = "/health",
         pages = new object[]
         {
-            new { path, title = new { de = "Klick-Demo", en = "Click demo" }, module, icon = "pi pi-star" },
+            new { path, title = new { de = "Klick-Demo", en = "Click demo" }, module, icon = "pi pi-star", tabTitle = new { de = tabTitle } },
             new { path = "/admin", title = new { de = "Administration", en = "Administration" }, module = "./AdminPage", roles = new[] { "admin" } },
         },
     };

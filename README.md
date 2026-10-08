@@ -236,13 +236,26 @@ sequenceDiagram
 | `federationName` | Module-Federation-Name aus der `vite.config.ts`, z. B. `vueDemo`. |
 | `address` | Wo der Host das Remote-BFF erreicht, z. B. `http://localhost:5011`. |
 | `group` | Pflicht: Gruppe in der Navigation, z. B. `Demo`. Einfach ein Name (höchstens 40 Zeichen), er steht in beiden Sprachen gleich über den Einträgen. |
-| `pages[]` | Je Seite: `path` (Route in der Shell), `title` pro Sprache (Navigation und Tab, Deutsch und Englisch Pflicht), `module` (exposed Modul), `icon` (PrimeIcons-Klasse in Vue, lucide-Name in React), `roles` (wer die Seite sehen darf), `requiresAuth`, `showInNav`, `order` (Sortierindex in der Gruppe). |
+| `pages[]` | Je Seite: `path` (Route in der Shell), `title` pro Sprache (Navigation, Deutsch und Englisch Pflicht), `module` (exposed Modul), `icon` (PrimeIcons-Klasse in Vue, lucide-Name in React), `roles` (wer die Seite sehen darf), `requiresAuth`, `showInNav`, `order` (Sortierindex in der Gruppe), `tabTitle` pro Sprache (was oben im Browser-Tab steht, siehe unten). |
 | `version` | Wird auf der Registry-Seite angezeigt; ohne Angabe die Version des Remote-BFF. |
 | `displayName` | Name des Remotes pro Sprache für die Registry-Seite. |
 | `apiScope` | Audience, die die API des Remotes erwartet; ohne Angabe `Jwt:Audience`. Die Registry-Seite warnt, wenn das Host-BFF diesen Scope beim Login nicht anfordert, denn dann lehnt die API die Tokens der Benutzer ab. |
 | `healthPath` | Pfad, den der Host für den Health-Check aufruft, Standard `/health`. |
 
 Im Remote-BFF steht das unter `Registration` in der `appsettings.json` (`Remote` mit den Feldern oben, dazu `HostUrl`, `Address` und `ApiKey`), den Rest erledigt `shared/Mfe.RemoteBff/Registration`. Die Antwort des Hosts nennt das Heartbeat-Intervall, der Host gibt den Takt vor.
+
+### Tab-Titel aus der `.env`
+
+Was oben im Browser-Tab steht, hängt von der Stage ab (auf der Test-Stage z. B. „Test - Klick-Demo“). Deshalb steht es nicht in der `appsettings.json`, sondern in einer `.env` neben dem Remote-BFF, die nicht eingecheckt wird; `.env.example` im Projekt zeigt, was hineingehört:
+
+```bash
+# vue/remote-demo/.env auf der Test-Stage
+Registration__Remote__TabTitle=Test - {title}
+```
+
+`{title}` ist der Titel der Seite in der jeweiligen Sprache. Das Remote-BFF setzt ihn beim Anmelden ein und schickt je Seite `tabTitle: {"de": "Test - Klick-Demo", "en": "Test - Click demo"}`. Eine einzelne Seite kann ihren eigenen haben (`Registration__Remote__Pages__1__TabTitle__de=…`, der Index wie in `Pages`). Die Shell zeigt ihn unverändert; ohne `tabTitle` für die aktive Sprache bleibt es bei ihrem eigenen Titel („Klick-Demo · Microfrontend Vue“).
+
+Die `.env` hat das Format `KEY=VALUE` mit Schlüsseln wie Umgebungsvariablen (`__` statt `:`), Kommentare mit `#`. Sie überschreibt die `appsettings*.json`, echte Umgebungsvariablen der Stage überschreiben wiederum sie. Fehlt sie, gilt die `appsettings.json`. Gelesen wird sie aus dem Content-Root des BFF (beim Entwickeln das Projektverzeichnis, im Betrieb das Verzeichnis der veröffentlichten Anwendung); eine Änderung wirkt nach einem Neustart des Remote-BFF, die Shell zeigt sie spätestens beim nächsten Aufruf der Seite, ohne Neuladen.
 
 ### Navigation in Gruppen
 
@@ -372,7 +385,7 @@ Wo Module Federation vom Muster aus YuE-UI abweicht:
 
 1. `vue/remote-demo` bzw. `react/remote-demo` kopieren. In `ClientApp/`: `name` in `package.json`, `base`, `server.port` und den Federation-`name` in `vite.config.ts` anpassen, einen eigenen Tailwind-Prefix wählen (`remote.css`, bei React zusätzlich `components.json` und `src/lib/utils.ts`). Im Projekt selbst: Projektname, Port in `launchSettings.json`, `Ui:BasePath`, `Ui:DevServer`, den Eintrag unter `DevServers` und `Jwt:Audience` anpassen.
 2. Seiten über `exposes` freigeben (`'./MeineSeite': './src/pages/MeineSeite.vue'`), jeweils mit Default-Export und eigenen Texten in Deutsch und Englisch. Texte, die es schon im gemeinsamen Wortschatz gibt, über `src/common.ts` von dort nehmen (die Datei mitkopieren und die Ersatztexte auf die genutzten Keys beschränken).
-3. Unter `Registration` in der `appsettings.json` des Remotes `Address` und unter `Remote` `Id` (gleich dem Pfadsegment von `Ui:BasePath`), `FederationName`, `Group` und die `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`, `Order`) eintragen; den `ApiKey` in `appsettings.Development.json` bzw. User Secrets.
+3. Unter `Registration` in der `appsettings.json` des Remotes `Address` und unter `Remote` `Id` (gleich dem Pfadsegment von `Ui:BasePath`), `FederationName`, `Group` und die `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`, `Order`) eintragen; den `ApiKey` in `appsettings.Development.json` bzw. User Secrets. Den stage-abhängigen Tab-Titel trägt jede Stage in die `.env` ein (`.env.example` mitkopieren).
 4. Im Host-BFF denselben Key unter `Registry:ApiKeys:<id>` eintragen (in Development in `appsettings.Development.json`, sonst User Secrets oder Umgebungsvariable). Hat das Remote eine API: ihren Scope beim Client des Host-BFF im Identity Server freigeben und im Host-BFF unter `Oidc:Scopes` anfordern. Sonst muss am Host-BFF nichts geändert werden, Routen und Navigation entstehen aus der Anmeldung.
 5. Das Projekt in `Microfrontend.slnx`, seine `ClientApp` in `workspaces` der `package.json` und das BFF in `e2e/playwright.config.ts` eintragen.
 
@@ -393,6 +406,7 @@ Playwright startet Identity und alle BFFs (die ihre Vite-Server mitbringen) selb
 
 - `dotnet publish vue/host -c Release -o …` liefert das Host-BFF mit der gebauten Shell in `wwwroot`, `dotnet publish vue/remote-demo …` das Demo-BFF mit seiner Remote-UI. Ohne `Shell:DevServer`/`Ui:DevServer` (die nur in `appsettings.Development.json` stehen) liefern die BFFs diese Dateien aus. Die Komponenten-Bibliothek baut `npm run build -w @mfe/vue-components` nach `vue/components/dist`; sie liegt als statische Dateien irgendwo (CDN, Nginx, Blob Storage), der Cluster `<variante>-components` im Host-BFF zeigt dorthin.
 - Ein Remote-BFF meldet sich unter `Registration:HostUrl` an und nennt `Registration:Address` als seine Adresse; beide zeigen in `appsettings.json` auf `localhost`. In Produktion auf die echten Adressen setzen, `Registration:ApiKey` (Remote) und `Registry:ApiKeys` (Host) wie `Oidc:ClientSecret` aus User Secrets bzw. Umgebungsvariablen.
+- Pro Stage liegt neben jedem Remote-BFF eine `.env` mit dem Tab-Titel (`Registration__Remote__TabTitle=Test - {title}`), oder die Stage setzt dieselbe Umgebungsvariable.
 - `Oidc:ClientSecret` gehört in User Secrets bzw. Umgebungsvariablen (`Oidc__ClientSecret`), nicht in die Datei.
 - Die Session liegt im Cookie (inklusive Tokens, ASP.NET Core teilt große Cookies automatisch). Bei vielen Claims oder mehreren Instanzen eines Host-BFF lohnt ein serverseitiger `ITicketStore` und ein gemeinsamer Data-Protection-Key-Ring.
 - HTTPS: In Development läuft alles über `http://localhost`. In Produktion `Oidc:RequireHttpsMetadata` und `Jwt:RequireHttpsMetadata` auf `true` lassen.

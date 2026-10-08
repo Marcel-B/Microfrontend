@@ -21,6 +21,7 @@ function remoteRoutes(frontend: FrontendConfig): RouteRecordRaw[] {
       component: () => loadRemoteComponent(remote.name, page.module).catch(() => RemoteError),
       meta: {
         titles: page.title,
+        tabTitles: page.tabTitle ?? {},
         requiresAuth: page.requiresAuth || page.roles.length > 0,
         roles: page.roles,
       },

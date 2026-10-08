@@ -73,7 +73,16 @@ test.describe('Remote-Registry', () => {
         version: '9.9.9',
         group: 'Demo',
         // Between the demo's own pages (10 and 20).
-        pages: [{ path: `/${id}`, title: { de: title, en: title }, module: './DemoPage', order: 15 }],
+        pages: [
+          {
+            path: `/${id}`,
+            title: { de: title, en: title },
+            module: './DemoPage',
+            order: 15,
+            // What the remote BFF builds from its .env, e.g. "Test - {title}".
+            tabTitle: { de: `Test - ${title}`, en: `Test - ${title} (en)` },
+          },
+        ],
       },
     })
     expect(registered.status()).toBe(200)
@@ -81,6 +90,12 @@ test.describe('Remote-Registry', () => {
 
     // The shell asks the host for the reachable remotes every few seconds: no reload needed.
     await expect(demoGroup.getByRole('link')).toHaveText(['Klick-Demo', title, 'Administration'], { timeout: 20_000 })
+
+    // Its page shows the tab title the remote sent, the demo's own pages keep the shell's.
+    await demoGroup.getByRole('link', { name: title }).click()
+    await expect(page).toHaveTitle(`Test - ${title}`)
+    await demoGroup.getByRole('link', { name: 'Klick-Demo' }).click()
+    await expect(page).toHaveTitle(/^Klick-Demo · /)
 
     expect((await request.delete(url, { headers })).status()).toBe(204)
     await expect(demoGroup.getByRole('link', { name: title })).toHaveCount(0, { timeout: 20_000 })

@@ -29,7 +29,11 @@ public sealed record RemoteRegistration(
     public int Order => Pages.Count == 0 ? 0 : Pages.Min(p => p.Order);
 }
 
-/// <summary>A page of a remote: a route in the shell and, if <see cref="ShowInNav"/>, an entry in its navigation.</summary>
+/// <summary>
+/// A page of a remote: a route in the shell and, if <see cref="ShowInNav"/>, an entry in its navigation.
+/// <see cref="TabTitle"/> is what the browser tab shows per language, set by the remote per stage (e.g. "Test - Klick-Demo");
+/// a language without one gets the shell's own tab title.
+/// </summary>
 public sealed record RemotePage(
     string Path,
     IReadOnlyDictionary<string, string> Title,
@@ -38,7 +42,8 @@ public sealed record RemotePage(
     bool RequiresAuth,
     IReadOnlyList<string> Roles,
     bool ShowInNav,
-    int Order)
+    int Order,
+    IReadOnlyDictionary<string, string> TabTitle)
 {
     /// <summary>Pages with roles need a login even when <see cref="RequiresAuth"/> is not set.</summary>
     public bool NeedsLogin => RequiresAuth || Roles.Count > 0;

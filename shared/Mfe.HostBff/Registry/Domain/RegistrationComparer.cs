@@ -23,7 +23,8 @@ internal static class RegistrationComparer
         && a.ShowInNav == b.ShowInNav
         && a.Order == b.Order
         && a.Roles.SequenceEqual(b.Roles)
-        && SameTexts(a.Title, b.Title);
+        && SameTexts(a.Title, b.Title)
+        && SameTexts(a.TabTitle, b.TabTitle);
 
     private static bool SameTexts(IReadOnlyDictionary<string, string> a, IReadOnlyDictionary<string, string> b) =>
         a.Count == b.Count && a.All(entry => b.TryGetValue(entry.Key, out var value) && value == entry.Value);

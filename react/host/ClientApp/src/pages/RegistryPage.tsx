@@ -336,6 +336,7 @@ function RemoteDetails({
           <TableRow>
             <TableHead>{t('debug.path')}</TableHead>
             <TableHead>{t('registry.pageTitle')}</TableHead>
+            <TableHead>{t('registry.tabTitle')}</TableHead>
             <TableHead>{t('debug.module')}</TableHead>
             <TableHead>{t('registry.icon')}</TableHead>
             <TableHead>{t('debug.roles')}</TableHead>
@@ -352,6 +353,17 @@ function RemoteDetails({
                     <span className="text-muted-foreground">{language}:</span> {text}
                   </span>
                 ))}
+              </TableCell>
+              <TableCell>
+                {Object.keys(page.tabTitle ?? {}).length ? (
+                  Object.entries(page.tabTitle ?? {}).map(([language, text]) => (
+                    <span key={language} className="mr-2">
+                      <span className="text-muted-foreground">{language}:</span> {text}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-muted-foreground">{t('registry.shellTabTitle')}</span>
+                )}
               </TableCell>
               <TableCell>{page.module}</TableCell>
               <TableCell>

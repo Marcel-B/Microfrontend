@@ -22,6 +22,9 @@ public static partial class RegistrationRules
     /// <summary>Longer group names do not fit the navigation's heading.</summary>
     public const int MaxGroupLength = 40;
 
+    /// <summary>Browsers cut tab titles long before this; it only keeps nonsense out.</summary>
+    public const int MaxTabTitleLength = 200;
+
     public static bool IsValidId(string id) => IdPattern().IsMatch(id);
 
     /// <param name="registration">The registration to check.</param>
@@ -98,6 +101,11 @@ public static partial class RegistrationRules
             foreach (var language in requiredLanguages.Where(l => string.IsNullOrWhiteSpace(page.Title.GetValueOrDefault(l))))
             {
                 problems.Add(new($"{field}.title.{language}", $"A title in '{language}' is required for the navigation."));
+            }
+
+            foreach (var (language, tabTitle) in page.TabTitle.Where(t => string.IsNullOrWhiteSpace(t.Value) || t.Value.Length > MaxTabTitleLength || t.Value.Any(char.IsControl)))
+            {
+                problems.Add(new($"{field}.tabTitle.{language}", $"Use 1 to {MaxTabTitleLength} characters without line breaks, or leave the language out."));
             }
 
             if (registration.Pages.Take(i).Any(p => SamePath(p.Path, page.Path)))
