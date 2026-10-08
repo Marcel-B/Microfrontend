@@ -4,7 +4,7 @@ Eine Microfrontend-Plattform mit .NET-10-BFFs und zwei voneinander unabhängigen
 
 - **Host** mit eigenem BFF: liefert die Shell aus und kümmert sich um Anmeldung, Navigation, die Seiten 401/403/404 und eine Debugseite.
 - **Remote „Demo“** mit eigenem BFF: das BFF liefert die Oberfläche des Remotes (Klick-Demo und Administration) und dessen API. Ist der Benutzer Admin, zeigt die Demo-Seite einen Hinweis, den das Remote-BFF aus dem Access Token ableitet.
-- **Komponenten-Bibliothek** als eigenes Remote: stellt einen Button bereit, den andere Remotes per Module Federation einbinden.
+- **Komponenten-Bibliothek** als eigenes Remote: stellt einen Button und den gemeinsamen Wortschatz aller Remotes bereit, die andere Remotes per Module Federation einbinden.
 
 Alle Teile sind zweisprachig (Deutsch, Englisch). Die Sprache wählt man in der Shell, Remotes und Bibliothek ziehen mit.
 
@@ -24,6 +24,82 @@ Browser ──► React Host-BFF :5020 (gleicher Aufbau)
 
 Identity Server :5001 (eigenes Repo Marcel-B/Identity, OpenIddict + ASP.NET Core Identity, Rollen)
 ```
+
+## Überblick
+
+Die Farben stehen für die Teile einer Variante, in Vue und React gleich: **blau** der Host (Host-BFF und Shell), **grün** das Remote (Remote-BFF und Remote-UI), **lila** die Komponenten-Bibliothek (Komponenten und gemeinsamer Wortschatz), **gelb** der Identity Server. Durchgezogene Pfeile sind HTTP-Aufrufe, gestrichelte das Laden im Browser per Module Federation.
+
+```mermaid
+flowchart LR
+  browser(["Browser"])
+
+  subgraph host["Host"]
+    hostBff["Host-BFF<br/>Anmeldung, Session, Proxy"]
+    shell["Shell<br/>Header, Navigation, Footer,<br/>i18n-Instanz"]
+  end
+
+  subgraph remote["Remote „Demo“"]
+    remoteBff["Remote-BFF<br/>API, prüft das Access Token"]
+    remoteUi["Remote-UI<br/>Seiten Klick-Demo und Administration"]
+  end
+
+  subgraph library["Komponenten-Bibliothek"]
+    button["./Button"]
+    i18n["./i18n<br/>gemeinsamer Wortschatz"]
+  end
+
+  identity[("Identity Server")]
+
+  browser --> hostBff
+  hostBff -->|"/"| shell
+  hostBff -->|"/remotes/…-demo<br/>/api/…-demo mit Access Token"| remoteBff
+  remoteBff --> remoteUi
+  hostBff -->|"/remotes/…-components"| library
+  hostBff -->|"OIDC"| identity
+  remoteBff -->|"Signaturschlüssel"| identity
+  shell -.->|"lädt Seiten"| remoteUi
+  remoteUi -.->|"importiert"| button
+  remoteUi -.->|"lädt Texte"| i18n
+
+  classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef remote fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef library fill:#f3e8ff,stroke:#9333ea,color:#581c87
+  classDef identity fill:#fef3c7,stroke:#d97706,color:#78350f
+  classDef neutral fill:#f4f4f5,stroke:#71717a,color:#18181b
+  class hostBff,shell host
+  class remoteBff,remoteUi remote
+  class button,i18n library
+  class identity identity
+  class browser neutral
+  style host fill:#eff6ff,stroke:#2563eb,color:#1e3a8a
+  style remote fill:#f0fdf4,stroke:#16a34a,color:#14532d
+  style library fill:#faf5ff,stroke:#9333ea,color:#581c87
+```
+
+Eine Seite der Anwendung setzt sich so zusammen:
+
+```mermaid
+block-beta
+  columns 4
+  header["Header: Titel, Sprache, Anmelden"]:4
+  nav["Navigation"]:1
+  block:page:3
+    columns 1
+    text["Seite aus dem Remote „Demo“:<br/>Überschrift und eigene Texte"]
+    button["Button"]
+    common["„Wollen Sie die Promotion wirklich löschen?“"]
+  end
+  footer["Footer mit Schalter „Herkunft anzeigen“"]:4
+
+  classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+  classDef remote fill:#dcfce7,stroke:#16a34a,color:#14532d
+  classDef library fill:#f3e8ff,stroke:#9333ea,color:#581c87
+  class header,nav,footer host
+  class page,text remote
+  class button,common library
+```
+
+In der laufenden Anwendung zeigt der Schalter „Herkunft anzeigen“ im Footer dieselben Farben: Jeder Bereich bekommt einen gestrichelten Rahmen in der Farbe des Teils, aus dem er kommt. Die Bereiche markieren sich dafür selbst mit `data-origin="host"`, `"remote"` oder `"library"`, die Rahmen zeichnet das CSS der Shell (`src/lib/origin.ts`). Neue Remotes setzen `data-origin="remote"` an das Wurzelelement ihrer Seiten.
 
 ## Aufbau
 
@@ -97,9 +173,15 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 
 **Remotes.** Welche Remotes und Seiten es gibt, steht in der `appsettings.json` des Host-BFF unter `Remotes`. Die Shell lädt diese Liste beim Start von `/bff/remotes`, registriert die Remotes bei der Module-Federation-Runtime und baut daraus Routen und Navigation. Seiten mit `Roles` sind nur für angemeldete Benutzer mit einer dieser Rollen erreichbar, sonst kommt 401 bzw. 403.
 
-**Komponenten-Bibliothek.** `vue/components` bzw. `react/components` ist ein Remote ohne Seiten, das nur Komponenten exposed (`./Button`). Das Demo-Remote trägt sie in seiner `vite.config.ts` unter `remotes` ein und importiert den Button wie ein Paket: `import Button from 'vueComponents/Button'`. Der Eintrag `/remotes/vue-components/remoteEntry.js` ist relativ und wird gegen die Adresse der Seite aufgelöst, also gegen das Host-BFF. Die Props stehen für TypeScript in `vue-components.d.ts` bzw. `react-components.d.ts` im Remote.
+**Komponenten-Bibliothek.** `vue/components` bzw. `react/components` ist ein Remote ohne Seiten, das nur Komponenten (`./Button`) und den gemeinsamen Wortschatz (`./i18n`, siehe unten) exposed. Das Demo-Remote trägt sie in seiner `vite.config.ts` unter `remotes` ein und importiert den Button wie ein Paket: `import Button from 'vueComponents/Button'`. Der Eintrag `/remotes/vue-components/remoteEntry.js` ist relativ und wird gegen die Adresse der Seite aufgelöst, also gegen das Host-BFF. Die Props stehen für TypeScript in `vue-components.d.ts` bzw. `react-components.d.ts` im Remote.
 
 **Mehrsprachigkeit.** Die Shell besitzt die i18n-Instanz (vue-i18n bzw. i18next) und teilt sie als Singleton per Module Federation. Jedes Remote und die Bibliothek bringen ihre Texte selbst mit: In Vue per `useI18n({ useScope: 'local', messages })`, in React als eigener i18next-Namespace (`reactDemo`, `reactComponents`). Die Sprache kommt immer von der Shell: Umschalten im Header ändert Shell, Remote und Bibliothek zugleich. Die Wahl landet im `localStorage` und in `<html lang>`. Beim ersten Besuch entscheidet die Browsersprache. Seitentitel für Navigation und Tab kommen pro Sprache aus der Remote-Konfiguration (`"Title": { "de": "Klick-Demo", "en": "Click demo" }`).
+
+**Gemeinsamer Wortschatz.** Begriffe und Sätze, die in mehreren Remotes vorkommen („Promotion“, „Wollen Sie die Promotion wirklich löschen?“), liegen nicht in jedem Remote, sondern einmal in der Komponenten-Bibliothek: `src/common-i18n.ts`, exposed als `./i18n`. Die Bibliothek wird ohnehin von allen Remotes geladen, braucht also keinen eigenen Endpunkt. Ein Remote lädt das Modul beim ersten Gebrauch und trägt die Texte in die geteilte Instanz der Shell ein: in Vue unter `common` in die globalen Messages (`registerCommonMessages`), in React als i18next-Namespace `common` (`registerCommonTexts`). Ist der Namespace schon da, weil ein anderes Remote ihn geladen hat, passiert nichts. Eine Textänderung braucht damit ein Deployment der Bibliothek, Host und Remotes bleiben unberührt.
+
+- Allgemeine Sätze sind parametrisiert: `confirm.delete` = „Wollen Sie {entity} wirklich löschen?“ deckt alle Entitäten ab. Weil im Deutschen der Artikel vom Fall abhängt, bringt jede Entität ihre Akkusativform mit (`entities.promotion.accusative` = „die Promotion“).
+- Das Remote lädt `vueComponents/i18n` bzw. `reactComponents/i18n` per dynamischem `import()` und hat für die Texte, die es nutzt, eigene Ersatztexte (`src/common.ts`). Fehlt die Bibliothek, zeigt es diese statt leerer Keys: in Vue als `default` von `t`, in React als `defaultValue`. Die Karte „Gemeinsamer Wortschatz“ auf der Demo-Seite zeigt, woher die Texte gerade kommen.
+- Die Bibliothek ist der Ort für domänenneutrale Texte und für Fachbegriffe, die mehrere Remotes einer Domäne teilen. Was nur ein Remote braucht, bleibt in dessen eigenen Texten.
 
 **Geteilte Bibliotheken.** Vue-Teile teilen sich `vue`, `vue-router`, `pinia`, `vue-i18n` und `primevue/*`, React-Teile `react`, `react-dom`, `react-router`, `i18next` und `react-i18next` (jeweils als Singleton).
 
@@ -108,7 +190,7 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 ## Neues Remote anlegen
 
 1. `vue/remote-demo` bzw. `react/remote-demo` kopieren. In `ui/`: `name` in `package.json`, `base`, `server.port` und den Federation-`name` in `vite.config.ts` anpassen, einen eigenen Tailwind-Prefix wählen (`remote.css`, bei React zusätzlich `components.json` und `src/lib/utils.ts`). In `bff/`: Projektname, Port in `launchSettings.json`, `Ui:BasePath`, `Ui:DevServer` und `Jwt:Audience` anpassen.
-2. Seiten über `exposes` freigeben (`'./MeineSeite': './src/pages/MeineSeite.vue'`), jeweils mit Default-Export und eigenen Texten in Deutsch und Englisch.
+2. Seiten über `exposes` freigeben (`'./MeineSeite': './src/pages/MeineSeite.vue'`), jeweils mit Default-Export und eigenen Texten in Deutsch und Englisch. Texte, die es schon im gemeinsamen Wortschatz gibt, über `src/common.ts` von dort nehmen (die Datei mitkopieren und die Ersatztexte auf die genutzten Keys beschränken).
 3. Den API-Scope im Identity-Repo beim Client des Host-BFF eintragen und im Host-BFF unter `Oidc:Scopes` anfordern.
 4. Im Host-BFF unter `ReverseProxy` die Routen `/remotes/<name>/{**catch-all}` (UI) und `/api/<name>/{**catch-all}` (API, mit `"AuthorizationPolicy": "default"`, `"Bff.AccessToken": "true"` und dem `PathPattern`-Transform) samt Cluster anlegen.
 5. Unter `Remotes` das Remote mit `Entry` und seinen `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`) eintragen.

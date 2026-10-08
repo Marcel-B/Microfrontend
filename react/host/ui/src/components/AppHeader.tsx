@@ -16,7 +16,7 @@ export function AppHeader({ onToggleNav }: { onToggleNav: () => void }) {
   const toggleDark = () => setDark(document.documentElement.classList.toggle('dark'))
 
   return (
-    <header className="flex h-14 items-center gap-3 border-b bg-card px-4" data-testid="app-header">
+    <header className="flex h-14 items-center gap-3 border-b bg-card px-4" data-testid="app-header" data-origin="host">
       <Button variant="ghost" size="icon" className="md:hidden" aria-label={t('nav.open')} onClick={onToggleNav}>
         <Menu />
       </Button>

@@ -10,7 +10,10 @@ export default {
     language: 'Sprache',
   },
   languages: { de: 'Deutsch', en: 'English' },
-  footer: { copyright: '© {{year}} Microfrontend-Plattform' },
+  footer: {
+    copyright: '© {{year}} Microfrontend-Plattform',
+    origin: { show: 'Herkunft anzeigen', hide: 'Herkunft ausblenden', host: 'Shell', remote: 'Remote', library: 'Komponenten-Bibliothek' },
+  },
   home: {
     welcome: 'Willkommen',
     welcomeUser: 'Willkommen, {{name}}',

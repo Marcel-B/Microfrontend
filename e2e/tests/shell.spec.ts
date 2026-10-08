@@ -17,8 +17,8 @@ test.describe('Shell', () => {
 
     const remote = page.getByTestId('remote-demo')
     await expect(remote.getByRole('heading', { name: 'Klick-Demo' })).toBeVisible()
-    const button = remote.locator(`[data-component="${variant}Components/Button"]`)
-    await expect(button).toHaveText('Klick mich')
+    const button = remote.getByRole('button', { name: 'Klick mich' })
+    await expect(button).toHaveAttribute('data-component', `${variant}Components/Button`)
     await button.click()
     await expect(remote.getByTestId('click-count')).toHaveText('Button wurde 1-mal geklickt.')
   })
@@ -47,6 +47,54 @@ test.describe('Shell', () => {
     // The choice survives a reload.
     await page.reload()
     await expect(page.getByTestId('remote-demo').getByRole('heading', { name: 'Click demo' })).toBeVisible()
+  })
+
+  test('demo remote uses the shared vocabulary of the component library', async ({ page, shell }) => {
+    await shell.goto('demo')
+    const card = page.getByTestId('shared-vocabulary')
+    await expect(card.getByTestId('vocabulary-source')).toHaveAttribute('data-source', 'library')
+
+    await card.getByRole('button', { name: 'Löschen' }).click()
+    await expect(card.getByTestId('delete-confirm')).toHaveText('Wollen Sie die Promotion wirklich löschen?')
+    await card.getByRole('button', { name: 'Abbrechen' }).click()
+    await expect(card.getByTestId('delete-confirm')).toHaveCount(0)
+
+    // The shared texts follow the shell's language like the remote's own texts.
+    await page.getByTestId('language-switcher').getByRole('button', { name: 'English' }).click()
+    await card.getByRole('button', { name: 'Delete' }).click()
+    await expect(card.getByTestId('delete-confirm')).toHaveText('Do you really want to delete the promotion?')
+    await card.getByRole('button', { name: 'Delete' }).click()
+    await expect(card.getByTestId('delete-status')).toHaveText('Deleted.')
+  })
+
+  test('demo remote falls back to its own texts when the shared vocabulary does not load', async ({ page, shell }) => {
+    // Blocks only the library's i18n module (src/common-i18n.ts in dev, common-i18n-<hash>.js in a build).
+    await page.route(/common-i18n/, (route) => route.abort())
+    await shell.goto('demo')
+    const card = page.getByTestId('shared-vocabulary')
+    await expect(card.getByTestId('vocabulary-source')).toHaveAttribute('data-source', 'fallback')
+
+    await card.getByRole('button', { name: 'Löschen' }).click()
+    await expect(card.getByTestId('delete-confirm')).toHaveText('Wollen Sie die Promotion wirklich löschen?')
+  })
+
+  test('outlines shell, remote and component library in their colors on demand', async ({ page, shell }) => {
+    await shell.goto('demo')
+    const remote = page.getByTestId('remote-demo')
+    await expect(remote.getByRole('button', { name: 'Klick mich' })).toBeVisible()
+    await expect(remote).toHaveCSS('outline-style', 'none')
+
+    await page.getByTestId('origin-toggle').click()
+
+    // Same colors as the README diagram: shell blue, remote green, component library purple.
+    await expect(page.getByTestId('app-header')).toHaveCSS('outline-color', 'rgb(37, 99, 235)')
+    await expect(remote).toHaveCSS('outline-color', 'rgb(22, 163, 74)')
+    await expect(remote.getByRole('button', { name: 'Klick mich' })).toHaveCSS('outline-color', 'rgb(147, 51, 234)')
+    await expect(page.getByTestId('origin-legend')).toContainText('Komponenten-Bibliothek')
+
+    // The choice survives a reload.
+    await page.reload()
+    await expect(page.getByTestId('remote-demo')).toHaveCSS('outline-color', 'rgb(22, 163, 74)')
   })
 
   test('shows 404 for unknown pages', async ({ page, shell }) => {

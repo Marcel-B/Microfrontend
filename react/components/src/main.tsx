@@ -5,9 +5,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { initReactI18next } from 'react-i18next'
 import Button from './Button'
+import { registerCommonTexts } from './common-i18n'
 import './standalone.css'
 
 await i18next.use(initReactI18next).init({ lng: navigator.language.startsWith('en') ? 'en' : 'de', fallbackLng: 'de', interpolation: { escapeValue: false } })
+registerCommonTexts()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -20,6 +22,8 @@ createRoot(document.getElementById('root')!).render(
         <Trash2 /> Destructive
       </Button>
       <Button loading>Loading</Button>
+      {/* Shared vocabulary ("reactComponents/i18n") */}
+      <p style={{ flexBasis: '100%' }}>{i18next.t('common:confirm.delete', { entity: i18next.t('common:entities.promotion.accusative') })}</p>
     </div>
   </StrictMode>,
 )

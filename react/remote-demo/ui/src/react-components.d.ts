@@ -11,3 +11,8 @@ declare module 'reactComponents/Button' {
 
   export default function Button(props: ButtonProps): React.JSX.Element
 }
+
+// Shared vocabulary of all remotes (react/components/src/common-i18n.ts).
+declare module 'reactComponents/i18n' {
+  export function registerCommonTexts(): void
+}

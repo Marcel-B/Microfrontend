@@ -17,6 +17,7 @@ export default function Button({ loading = false, disabled, className, children,
   return (
     <UiButton
       data-component="reactComponents/Button"
+      data-origin="library"
       disabled={disabled || loading}
       className={cn('ui:rounded-full ui:px-5 ui:shadow-sm', className)}
       {...props}

@@ -16,7 +16,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="demo:flex demo:flex-col demo:gap-6" data-testid="remote-admin">
+  <div class="demo:flex demo:flex-col demo:gap-6" data-testid="remote-admin" data-origin="remote">
     <h1 class="demo:text-3xl demo:font-semibold">{{ t('admin.title') }}</h1>
     <Message severity="info">{{ t('admin.info') }}</Message>
 

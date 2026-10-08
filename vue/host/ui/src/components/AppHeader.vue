@@ -23,6 +23,7 @@ function toggleDark() {
   <header
     class="flex h-14 items-center gap-3 border-b border-surface-200 bg-surface-0 px-4 dark:border-surface-800 dark:bg-surface-900"
     data-testid="app-header"
+    data-origin="host"
   >
     <Button icon="pi pi-bars" text rounded class="md:hidden" :aria-label="t('nav.open')" @click="$emit('toggle-nav')" />
     <RouterLink to="/" class="flex items-center gap-2 font-semibold">

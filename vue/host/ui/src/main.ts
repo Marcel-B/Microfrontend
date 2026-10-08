@@ -5,10 +5,12 @@ import ToastService from 'primevue/toastservice'
 import { createApp } from 'vue'
 import App from './App.vue'
 import { i18n } from './i18n'
+import { isOriginShown, setOriginShown } from './lib/origin'
 import { frontendKey, loadFrontendConfig } from './lib/remotes'
 import { createAppRouter } from './router'
 import './style.css'
 
+setOriginShown(isOriginShown())
 const frontend = await loadFrontendConfig()
 
 const app = createApp(App)

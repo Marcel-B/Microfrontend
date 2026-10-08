@@ -13,7 +13,7 @@ export default function AdminPage() {
   }, [])
 
   return (
-    <div className="demo:flex demo:flex-col demo:gap-6" data-testid="remote-admin">
+    <div className="demo:flex demo:flex-col demo:gap-6" data-testid="remote-admin" data-origin="remote">
       <h1 className="demo:text-3xl demo:font-semibold">{t('admin.title')}</h1>
       <div className="demo:flex demo:gap-3 demo:rounded-lg demo:border demo:bg-card demo:p-4 demo:text-sm">
         <Info className="demo:mt-0.5 demo:size-4 demo:shrink-0 demo:text-primary" />
