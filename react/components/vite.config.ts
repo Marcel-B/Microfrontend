@@ -6,6 +6,7 @@ import { defineConfig } from 'vite'
 
 // Component library as its own remote. It only exposes components and the shared vocabulary (no pages) and has no BFF: the host BFF
 // serves it under /remotes/react-components/ like any static asset. Other remotes import it as "reactComponents/...".
+// In development the host BFF starts this dev server too ("DevServers" in its appsettings.Development.json).
 export default defineConfig({
   base: '/remotes/react-components/',
   resolve: {

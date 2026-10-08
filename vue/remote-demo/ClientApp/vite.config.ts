@@ -3,8 +3,9 @@ import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vite'
 
-// UI of the demo remote. Its own BFF (../bff, vue-demo-bff) serves it under /remotes/vue-demo/, the host BFF
-// forwards that path to the remote BFF. The shell finds the remote via /bff/remotes.
+// UI of the demo remote. Its own BFF (the .NET project around this ClientApp folder, vue-demo-bff) serves it under
+// /remotes/vue-demo/ and starts this dev server with "dotnet run". The host BFF forwards that path to the remote BFF,
+// the shell finds the remote via /bff/remotes.
 export default defineConfig({
   base: '/remotes/vue-demo/',
   server: {

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- The shell lives in ClientApp/: "dotnet run" starts its Vite dev server, "dotnet publish" ships it as wwwroot. -->
+  <Import Project="..\..\shared\Mfe.ClientApp\ClientApp.targets" />
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\Mfe.HostBff\Mfe.HostBff.csproj" />
+  </ItemGroup>
+
+</Project>

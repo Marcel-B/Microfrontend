@@ -1,0 +1,53 @@
+<Project>
+
+  <!--
+    Imported by every BFF with a frontend in ClientApp/ (same layout as YuE-UI's src/YueUI.Api/ClientApp):
+    - dotnet build installs the npm packages once on a fresh checkout,
+    - dotnet run starts the Vite dev server (DevServerLauncher, configured under DevServers in appsettings.Development.json),
+    - dotnet publish builds the frontend and ships it as wwwroot.
+    The frontends are npm workspaces of the repository root, so packages are installed there (one lock file, and the
+    versions Module Federation shares as singletons stay the same in host and remotes).
+    Pass -p:SkipClientAppBuild=true when the frontend is built separately or Node.js is not needed.
+  -->
+
+  <PropertyGroup>
+    <SpaRoot>ClientApp\</SpaRoot>
+    <NpmRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..'))</NpmRoot>
+    <DefaultItemExcludes>$(DefaultItemExcludes);$(SpaRoot)node_modules\**;$(SpaRoot)dist\**</DefaultItemExcludes>
+    <SkipClientAppBuild Condition="'$(SkipClientAppBuild)' == ''">false</SkipClientAppBuild>
+  </PropertyGroup>
+
+  <!-- The frontend is no .NET content: its package.json and tsconfig.json must not land in the publish output. -->
+  <ItemGroup>
+    <Compile Remove="$(SpaRoot)**" />
+    <Content Remove="$(SpaRoot)**" />
+    <EmbeddedResource Remove="$(SpaRoot)**" />
+    <None Remove="$(SpaRoot)**" />
+    <None Include="$(SpaRoot)**" Exclude="$(SpaRoot)node_modules\**;$(SpaRoot)dist\**" />
+  </ItemGroup>
+
+  <!-- The dev server needs the npm packages, but "npm run dev" does not install them. -->
+  <Target Name="EnsureClientAppDependencies" BeforeTargets="Build" Condition="'$(Configuration)' == 'Debug' And '$(SkipClientAppBuild)' != 'true' And !Exists('$(NpmRoot)node_modules')">
+    <Exec Command="node --version" ContinueOnError="true" StandardOutputImportance="low">
+      <Output TaskParameter="ExitCode" PropertyName="NodeExitCode" />
+    </Exec>
+    <Warning Condition="'$(NodeExitCode)' != '0'" Text="Node.js was not found, so the frontend cannot run. Install Node.js 22 or later from https://nodejs.org/." />
+    <Message Condition="'$(NodeExitCode)' == '0'" Importance="high" Text="Installing the frontends' npm packages in $(NpmRoot) (first build only) ..." />
+    <Exec Condition="'$(NodeExitCode)' == '0'" WorkingDirectory="$(NpmRoot)" Command="npm ci" />
+  </Target>
+
+  <!-- dotnet publish: build the frontend and ship it as wwwroot, where Shell:Root and Ui:Root expect it. -->
+  <Target Name="PublishClientApp" AfterTargets="ComputeFilesToPublish" Condition="'$(SkipClientAppBuild)' != 'true'">
+    <Exec Condition="!Exists('$(NpmRoot)node_modules')" WorkingDirectory="$(NpmRoot)" Command="npm ci" />
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)\$(SpaRoot)" Command="npm run build" />
+    <ItemGroup>
+      <ClientAppDistFiles Include="$(MSBuildProjectDirectory)\$(SpaRoot)dist\**" />
+      <ResolvedFileToPublish Include="@(ClientAppDistFiles->'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot/%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
+</Project>

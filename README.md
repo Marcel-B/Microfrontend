@@ -107,13 +107,14 @@ In der laufenden Anwendung zeigt der Schalter „Herkunft anzeigen“ im Footer 
 shared/
   Mfe.HostBff/          Bausteine eines Host-BFF (OIDC + Cookie, CSRF, Token-Refresh, YARP, Remote-Registry, Shell)
   Mfe.RemoteBff/        Bausteine eines Remote-BFF (JWT Bearer, UI-Hosting)
-  Mfe.Bff.Tests/        Tests beider Bausteine und der Konfiguration beider Varianten
+  Mfe.ClientApp/        Oberfläche im BFF-Projekt: Vite-Start mit dotnet run, npm bei Build und Publish
+  Mfe.Bff.Tests/        Tests der Bausteine und der Konfiguration beider Varianten
 vue/
-  host/bff/             Vue Host-BFF          Mfe.Vue.HostBff     :5010
-  host/ui/              Vue-Shell             @mfe/vue-host       :5173
-  remote-demo/bff/      Vue Demo-BFF          Mfe.Vue.DemoBff     :5011
-  remote-demo/ui/       Vue-Remote „Demo“     @mfe/vue-remote-demo :5174
-  components/           Vue-Komponenten       @mfe/vue-components :5175
+  host/                 Vue Host-BFF          Mfe.Vue.HostBff      :5010
+    ClientApp/          Vue-Shell             @mfe/vue-host        :5173
+  remote-demo/          Vue Demo-BFF          Mfe.Vue.DemoBff      :5011
+    ClientApp/          Vue-Remote „Demo“     @mfe/vue-remote-demo :5174
+  components/           Vue-Komponenten       @mfe/vue-components  :5175
 react/                  derselbe Aufbau: Host-BFF :5020, Shell :5183, Demo-BFF :5021, Remote :5184, Komponenten :5185
 e2e/                    Playwright, je ein Projekt pro Variante
 ```
@@ -139,7 +140,7 @@ workspace/
 
 ```bash
 npm install
-npm run dev          # Identity, beide Varianten (4 BFFs, 6 Vite-Server)
+npm run dev          # Identity und beide Varianten (4 BFFs, die ihre 6 Vite-Server selbst starten)
 # oder nur eine Variante:
 npm run dev:vue
 npm run dev:react
@@ -151,6 +152,14 @@ Dann im Browser immer über das Host-BFF öffnen, nicht über die Vite-Ports:
 - React: http://localhost:5020/
 
 Nur dort gibt es `/bff/*`, also die Anmeldung. Wer die Shell trotzdem über ihren Vite-Port öffnet (5173, 5183), wird zum Host-BFF umgeleitet.
+
+Einzeln geht es wie in YuE-UI mit `dotnet run`, das BFF startet seine Oberfläche mit (siehe [Oberfläche im BFF-Projekt](#oberfläche-im-bff-projekt-clientapp)):
+
+```bash
+dotnet run --project ../Identity/src/Identity.Server --launch-profile http
+dotnet run --project vue/host          # Host-BFF :5010 mit Shell und Komponenten-Bibliothek
+dotnet run --project vue/remote-demo   # Demo-BFF :5011 mit Remote-UI
+```
 
 Testbenutzer (nur in Development angelegt, siehe `appsettings.Development.json` im Identity-Repo):
 
@@ -169,7 +178,7 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 
 **Remote-BFF und Access Token.** Das Host-BFF fordert beim Login zusätzlich den API-Scope des Remotes an (`vue-demo-api` bzw. `react-demo-api`). Der Identity Server schreibt ihn als Audience in das Access Token. Ruft die Remote-UI `/api/vue-demo/me` auf, leitet das Host-BFF den Aufruf an das Demo-BFF weiter, entfernt dabei das Session-Cookie und hängt das Access Token als Bearer an. Das Demo-BFF prüft Signatur, Aussteller und Audience (`shared/Mfe.RemoteBff`) und liest die Rollen aus dem Token. So entsteht der Admin-Hinweis auf der Demo-Seite. Die Seite „Administration“ ruft zusätzlich `/api/vue-demo/admin/status` auf, das nur mit der Rolle `admin` antwortet: Die Shell blendet die Seite für andere Benutzer aus, die API prüft trotzdem selbst.
 
-**UI-Hosting.** Jedes BFF liefert seine Oberfläche selbst aus. In Development leitet es an den Vite-Dev-Server weiter (`Shell:DevServer` bzw. `Ui:DevServer` in `appsettings.Development.json`). Ohne diese Einstellung liefert es die gebauten Dateien aus `wwwroot` (`Shell:Root` bzw. `Ui:Root`), die Shell mit `index.html` als Fallback für Client-Routen. Die Komponenten-Bibliothek hat kein BFF; das Host-BFF leitet `/remotes/<variante>-components/` an den Ort weiter, an dem sie liegt.
+**UI-Hosting.** Jedes BFF liefert seine Oberfläche selbst aus. In Development leitet es an den Vite-Dev-Server weiter (`Shell:DevServer` bzw. `Ui:DevServer` in `appsettings.Development.json`). Den Vite-Server startet es dabei selbst. Ohne diese Einstellung liefert es die gebauten Dateien aus `wwwroot` (`Shell:Root` bzw. `Ui:Root`), die Shell mit `index.html` als Fallback für Client-Routen. Die Komponenten-Bibliothek hat kein BFF; das Host-BFF leitet `/remotes/<variante>-components/` an den Ort weiter, an dem sie liegt.
 
 **CSRF-Schutz.** `/bff/user` und `/api/**` verlangen den Header `X-CSRF: 1`. Shell und Remotes setzen ihn bei jedem Aufruf. Fremde Seiten können den Header nicht ohne CORS-Freigabe senden.
 
@@ -189,14 +198,33 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 
 **Tailwind in Remotes.** Shell, Remotes und Bibliothek bauen ihr CSS getrennt. Damit sich gleiche Utilities nicht gegenseitig überschreiben (z. B. ein `inline-flex` aus dem Remote gegen ein `md:hidden` der Shell), nutzt jedes Remote einen eigenen Tailwind-Prefix: `demo:` im Demo-Remote, `ui:` in der Komponenten-Bibliothek. Preflight und Theme-Werte kommen von der Shell. In React kennt `components.json` den Prefix, sodass `npx shadcn add …` die Klassen gleich mit Prefix erzeugt.
 
+## Oberfläche im BFF-Projekt (ClientApp)
+
+Wie in YuE-UI liegt jede Oberfläche, die zu einem BFF gehört, im .NET-Projekt dieses BFF unter `ClientApp/`, und der .NET-Build kümmert sich um sie:
+
+- `dotnet run` startet mit dem BFF dessen Vite-Server: das Host-BFF die Shell und die Komponenten-Bibliothek, das Demo-BFF die Remote-UI. Das BFF nimmt Anfragen erst an, wenn seine Vite-Server antworten, und beendet sie mit sich selbst. Läuft ein Vite-Server schon (etwa von Hand gestartet), nutzt das BFF ihn.
+- `dotnet build` installiert beim ersten Mal die npm-Pakete (`npm ci` im Repo-Root).
+- `dotnet publish` baut die Oberfläche und legt sie als `wwwroot` ins Publish-Verzeichnis.
+- `-p:SkipClientAppBuild=true` lässt alle npm-Schritte weg, etwa wenn die Oberfläche getrennt gebaut wird.
+
+Welche Vite-Server ein BFF startet, steht unter `DevServers` in seiner `appsettings.Development.json` (`Name`, `Url`, `Directory`, optional `Command`). Den Start übernimmt `shared/Mfe.ClientApp/DevServerLauncher.cs`, Build und Publish `shared/Mfe.ClientApp/ClientApp.targets`, das jedes BFF-Projekt importiert. Was Vite selbst ausgibt, steht nur auf Debug im Log (`"Logging:LogLevel:Mfe.ClientApp": "Debug"`), damit die Vite-Adresse nicht wie eine zweite Adresse zum Öffnen aussieht. Fehler von Vite bleiben sichtbar.
+
+Wo Module Federation vom Muster aus YuE-UI abweicht:
+
+- **Kein SpaProxy.** YuE-UI nutzt dafür Microsoft.AspNetCore.SpaProxy. Das startet Vite erst, wenn der Browser die Startseite des BFF aufruft, und leitet den Browser dann auf den Vite-Port um. Hier muss der Browser auf dem Host-BFF bleiben, weil Session-Cookie, `/bff`, `/api` und `/remotes` nur dort zusammenkommen. Ein Remote-BFF bekommt außerdem nie einen Aufruf direkt vom Browser, nur über den Proxy des Host-BFF, SpaProxy würde seinen Vite-Server also nie starten. Deshalb startet das BFF Vite selbst und leitet per YARP weiter.
+- **Ein `dotnet run` pro BFF, nicht eins für alles.** Remotes werden erst zur Laufzeit geladen und getrennt ausgeliefert. Ihre Oberfläche gehört deshalb in ihr eigenes BFF und nicht ins Host-BFF. Eine Variante braucht damit mindestens zwei Prozesse (Host-BFF und Demo-BFF) plus Identity, `npm run dev` startet alle zusammen. Sollte das auch aus .NET heraus mit einem Befehl gehen, wäre ein .NET-Aspire-AppHost der nächste Schritt.
+- **Die Komponenten-Bibliothek hat kein BFF.** Sie ist ein rein statisches Remote, das alle Remotes nutzen. In Development startet das Host-BFF ihren Vite-Server mit, weil es `/remotes/<variante>-components/` weiterleitet. Im Betrieb wird sie getrennt ausgeliefert und nicht mit einem BFF gebaut, sonst hinge jede Textänderung im gemeinsamen Wortschatz an dessen Release.
+- **Ein Lockfile für alle Oberflächen.** In YuE-UI hat `ClientApp` eine eigene `package-lock.json`. Hier sind die ClientApps npm-Workspaces des Repos, damit die Pakete, die Module Federation als Singleton teilt (`vue`, `react`, `vue-i18n`, …), in Host und Remotes dieselbe Version haben. `npm ci` läuft deshalb im Repo-Root.
+- **Die Vite-Ports bleiben.** Jeder Vite-Server braucht weiter seinen festen Port (`strictPort`), weil das BFF dorthin weiterleitet. Geöffnet wird trotzdem nur das Host-BFF; wer eine Shell über ihren Vite-Port aufruft, landet per Umleitung dort.
+
 ## Neues Remote anlegen
 
-1. `vue/remote-demo` bzw. `react/remote-demo` kopieren. In `ui/`: `name` in `package.json`, `base`, `server.port` und den Federation-`name` in `vite.config.ts` anpassen, einen eigenen Tailwind-Prefix wählen (`remote.css`, bei React zusätzlich `components.json` und `src/lib/utils.ts`). In `bff/`: Projektname, Port in `launchSettings.json`, `Ui:BasePath`, `Ui:DevServer` und `Jwt:Audience` anpassen.
+1. `vue/remote-demo` bzw. `react/remote-demo` kopieren. In `ClientApp/`: `name` in `package.json`, `base`, `server.port` und den Federation-`name` in `vite.config.ts` anpassen, einen eigenen Tailwind-Prefix wählen (`remote.css`, bei React zusätzlich `components.json` und `src/lib/utils.ts`). Im Projekt selbst: Projektname, Port in `launchSettings.json`, `Ui:BasePath`, `Ui:DevServer`, den Eintrag unter `DevServers` und `Jwt:Audience` anpassen.
 2. Seiten über `exposes` freigeben (`'./MeineSeite': './src/pages/MeineSeite.vue'`), jeweils mit Default-Export und eigenen Texten in Deutsch und Englisch. Texte, die es schon im gemeinsamen Wortschatz gibt, über `src/common.ts` von dort nehmen (die Datei mitkopieren und die Ersatztexte auf die genutzten Keys beschränken).
 3. Den API-Scope im Identity-Repo beim Client des Host-BFF eintragen und im Host-BFF unter `Oidc:Scopes` anfordern.
 4. Im Host-BFF unter `ReverseProxy` die Routen `/remotes/<name>/{**catch-all}` (UI) und `/api/<name>/{**catch-all}` (API, mit `"AuthorizationPolicy": "default"`, `"Bff.AccessToken": "true"` und dem `PathPattern`-Transform) samt Cluster anlegen.
 5. Unter `Remotes` das Remote mit `Entry` und seinen `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`) eintragen.
-6. Das Projekt in `Microfrontend.slnx`, die UI in `workspaces` der `package.json` und die Dev-Server in `e2e/playwright.config.ts` eintragen.
+6. Das Projekt in `Microfrontend.slnx`, seine `ClientApp` in `workspaces` der `package.json` und das BFF in `e2e/playwright.config.ts` eintragen.
 
 Ein Remote lässt sich auch allein entwickeln: `npm run dev -w @mfe/vue-remote-demo` (und für den Button `npm run dev -w @mfe/vue-components`), dann http://localhost:5174/remotes/vue-demo/ öffnen, mit `?lang=en` auf Englisch. Ohne Host-BFF gibt es keine Anmeldung, die Seite zeigt dann „Nicht angemeldet“. Die Komponenten-Bibliothek hat unter http://localhost:5175/remotes/vue-components/ eine eigene Vorschau.
 
@@ -209,11 +237,11 @@ npm run build                # Produktions-Builds
 npm run test:e2e             # baut die BFFs, dann Playwright für beide Varianten
 ```
 
-Playwright startet Identity, alle BFFs und alle Vite-Server selbst oder nutzt bereits laufende (`npm run dev`). Die Tests liegen in `e2e/tests` und laufen gegen beide Host-BFFs. Gegen eine andere Umgebung testen: `E2E_VUE_URL=https://… E2E_REACT_URL=https://… npm run test:e2e`.
+Playwright startet Identity und alle BFFs (die ihre Vite-Server mitbringen) selbst oder nutzt bereits laufende (`npm run dev`). Die Tests liegen in `e2e/tests` und laufen gegen beide Host-BFFs. Gegen eine andere Umgebung testen: `E2E_VUE_URL=https://… E2E_REACT_URL=https://… npm run test:e2e`.
 
 ## Betrieb
 
-- Die gebauten Dateien gehören zu ihrem BFF: `vue/host/ui/dist` nach `wwwroot` des Host-BFF, `vue/remote-demo/ui/dist` nach `wwwroot` des Demo-BFF (oder `Shell:Root` bzw. `Ui:Root` auf den Ordner zeigen lassen). Ohne `Shell:DevServer`/`Ui:DevServer` liefern die BFFs dann diese Dateien aus. Die Komponenten-Bibliothek liegt als statische Dateien irgendwo (CDN, Nginx, Blob Storage); der Cluster `<variante>-components` im Host-BFF zeigt dorthin.
+- `dotnet publish vue/host -c Release -o …` liefert das Host-BFF mit der gebauten Shell in `wwwroot`, `dotnet publish vue/remote-demo …` das Demo-BFF mit seiner Remote-UI. Ohne `Shell:DevServer`/`Ui:DevServer` (die nur in `appsettings.Development.json` stehen) liefern die BFFs diese Dateien aus. Die Komponenten-Bibliothek baut `npm run build -w @mfe/vue-components` nach `vue/components/dist`; sie liegt als statische Dateien irgendwo (CDN, Nginx, Blob Storage), der Cluster `<variante>-components` im Host-BFF zeigt dorthin.
 - Die Cluster `<variante>-demo` zeigen in `appsettings.json` auf `localhost`. In Produktion auf die Adresse des Demo-BFF setzen.
 - `Oidc:ClientSecret` gehört in User Secrets bzw. Umgebungsvariablen (`Oidc__ClientSecret`), nicht in die Datei.
 - Die Session liegt im Cookie (inklusive Tokens, ASP.NET Core teilt große Cookies automatisch). Bei vielen Claims oder mehreren Instanzen eines Host-BFF lohnt ein serverseitiger `ITicketStore` und ein gemeinsamer Data-Protection-Key-Ring.

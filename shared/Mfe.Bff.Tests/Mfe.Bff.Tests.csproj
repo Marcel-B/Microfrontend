@@ -22,12 +22,16 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <!-- The variants' appsettings.json are checked by VariantConfigTests. -->
+  <!-- The variants' appsettings.json and appsettings.Development.json are checked by VariantConfigTests. -->
   <ItemGroup>
-    <None Include="..\..\vue\host\bff\appsettings.json" Link="variants\vue-host.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\react\host\bff\appsettings.json" Link="variants\react-host.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\vue\remote-demo\bff\appsettings.json" Link="variants\vue-demo.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\react\remote-demo\bff\appsettings.json" Link="variants\react-demo.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vue\host\appsettings.json" Link="variants\vue-host.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\react\host\appsettings.json" Link="variants\react-host.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vue\remote-demo\appsettings.json" Link="variants\vue-demo.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\react\remote-demo\appsettings.json" Link="variants\react-demo.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vue\host\appsettings.Development.json" Link="variants\vue-host.Development.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\react\host\appsettings.Development.json" Link="variants\react-host.Development.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vue\remote-demo\appsettings.Development.json" Link="variants\vue-demo.Development.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\react\remote-demo\appsettings.Development.json" Link="variants\react-demo.Development.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
