@@ -1,0 +1,33 @@
+/* Styles of the exposed pages. No preflight and no theme values: the shell provides both.
+   The @theme mapping below only tells Tailwind which utilities (bg-card, text-primary, ...) exist.
+
+   All classes of this remote carry the "demo:" prefix (demo:flex, demo:md:hidden, ...). Shell and remotes each
+   ship their own Tailwind build; without a prefix the same utility would exist twice and the later stylesheet
+   would break the earlier one's variants (e.g. a remote's "inline-flex" overriding the shell's "md:hidden"). */
+@import 'tailwindcss/theme.css' layer(theme) prefix(demo);
+@import 'tailwindcss/utilities.css' layer(utilities);
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bff:
+    name: BFF (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test bff/Bff.slnx
+
+  frontends:
+    name: Frontends (typecheck + build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    steps:
+      # The e2e setup expects the Identity repo next to this one (../Identity).
+      - uses: actions/checkout@v7
+        with:
+          path: Microfrontend
+      - uses: actions/checkout@v7
+        with:
+          repository: Marcel-B/Identity
+          path: Identity
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: Microfrontend/.nvmrc
+          cache: npm
+          cache-dependency-path: Microfrontend/package-lock.json
+      - run: npm ci
+        working-directory: Microfrontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: Microfrontend/e2e
+      - run: npm run test:e2e
+        working-directory: Microfrontend
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: playwright-report
+          path: Microfrontend/e2e/playwright-report
+          retention-days: 7

@@ -1,0 +1,55 @@
+import { FileText, House, Shield, Star, Wrench, type LucideIcon } from 'lucide-react'
+import { NavLink } from 'react-router'
+import { useAuth } from '@/auth/AuthContext'
+import { useFrontend } from '@/lib/frontend'
+import { cn } from '@/lib/utils'
+
+/** Icons the BFF config may reference by name. Extend as remotes need more. */
+const icons: Record<string, LucideIcon> = { house: House, star: Star, shield: Shield, wrench: Wrench }
+
+interface NavItem {
+  to: string
+  label: string
+  icon: LucideIcon
+}
+
+export function AppNav({ onNavigate }: { onNavigate?: () => void }) {
+  const auth = useAuth()
+  const { routes } = useFrontend()
+
+  const items: NavItem[] = [
+    { to: '/', label: 'Start', icon: House },
+    ...routes
+      .filter((page) => page.showInNav)
+      .filter((page) =>
+        page.requiresAuth || page.roles.length ? auth.user.isAuthenticated && auth.hasAnyRole(page.roles) : true,
+      )
+      .map((page) => ({ to: page.path, label: page.title, icon: icons[page.icon ?? ''] ?? FileText })),
+    { to: '/debug', label: 'Debug', icon: Wrench },
+  ]
+
+  return (
+    <nav aria-label="Hauptnavigation" data-testid="app-nav">
+      <ul className="flex flex-col gap-1">
+        {items.map((item) => (
+          <li key={item.to}>
+            <NavLink
+              to={item.to}
+              end
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm hover:bg-accent',
+                  isActive && 'bg-primary/10 font-medium text-primary',
+                )
+              }
+            >
+              <item.icon className="size-4" />
+              {item.label}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
+  )
+}
