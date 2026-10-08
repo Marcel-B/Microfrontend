@@ -1,0 +1,23 @@
+{
+  "name": "microfrontend",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "vue/*",
+    "react/*",
+    "e2e"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n identity,bff,vue,vue-demo,react,react-demo -c gray,blue,green,green,cyan,cyan \"npm:dev:identity\" \"npm:dev:bff\" \"npm:dev -w @mfe/vue-host\" \"npm:dev -w @mfe/vue-remote-demo\" \"npm:dev -w @mfe/react-host\" \"npm:dev -w @mfe/react-remote-demo\"",
+    "dev:vue": "concurrently -k -n identity,bff,vue,vue-demo -c gray,blue,green,green \"npm:dev:identity\" \"npm:dev:bff\" \"npm:dev -w @mfe/vue-host\" \"npm:dev -w @mfe/vue-remote-demo\"",
+    "dev:react": "concurrently -k -n identity,bff,react,react-demo -c gray,blue,cyan,cyan \"npm:dev:identity\" \"npm:dev:bff\" \"npm:dev -w @mfe/react-host\" \"npm:dev -w @mfe/react-remote-demo\"",
+    "dev:bff": "dotnet run --project bff/src/Mfe.Bff --launch-profile http",
+    "dev:identity": "dotnet run --project ../Identity/src/Identity.Server --launch-profile http",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test:e2e": "npm test -w @mfe/e2e"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

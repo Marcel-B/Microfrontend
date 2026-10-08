@@ -1,0 +1,12 @@
+/* Styles of the exposed pages. No preflight/base: the shell already provides those.
+
+   All classes of this remote carry the "demo:" prefix (demo:flex, demo:md:hidden, ...). Shell and remotes each
+   ship their own Tailwind build; without a prefix the same utility would exist twice and the later stylesheet
+   would break the earlier one's variants (e.g. a remote's "inline-flex" overriding the shell's "md:hidden"). */
+@layer theme, base, primevue, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme) prefix(demo);
+@import 'tailwindcss/utilities.css' layer(utilities);
+@plugin 'tailwindcss-primeui';
+
+@custom-variant dark (&:where(.app-dark, .app-dark *));

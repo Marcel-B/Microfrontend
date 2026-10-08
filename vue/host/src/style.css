@@ -1,0 +1,19 @@
+/* PrimeVue renders into the "primevue" layer, between Tailwind's base and utilities,
+   so utility classes can always override component styles. */
+@layer theme, base, primevue, components, utilities;
+
+@import 'tailwindcss';
+@import 'primeicons/primeicons.css';
+@plugin 'tailwindcss-primeui';
+
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  @apply bg-surface-50 text-surface-900 dark:bg-surface-950 dark:text-surface-0;
+}

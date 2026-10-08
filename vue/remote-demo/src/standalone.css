@@ -1,0 +1,3 @@
+/* Only used when the remote runs on its own (npm run dev, then open http://localhost:5174/remotes/vue-demo/). */
+@import 'tailwindcss/preflight.css' layer(base);
+@import 'primeicons/primeicons.css';
