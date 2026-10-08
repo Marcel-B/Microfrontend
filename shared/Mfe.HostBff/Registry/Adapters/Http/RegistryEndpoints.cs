@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace Mfe.HostBff.Registry.Adapters.Http;
 
 /// <summary>
-/// The registry over HTTP: the API remotes register with (bearer token from the Identity server), the reachable
+/// The registry over HTTP: the API remotes register with (their API key), the reachable
 /// remotes for the shell and the whole registry for admins.
 /// </summary>
 public static class RegistryEndpoints
@@ -23,7 +23,7 @@ public static class RegistryEndpoints
             .WithSummary("Registers a remote or renews its registration (heartbeat)")
             .WithDescription(
                 "Send the full registration at start and again every heartbeatSeconds of the answer. Without a heartbeat " +
-                "the registration ends after leaseSeconds. Only the client that registered a remote may renew or deregister it.");
+                "the registration ends after leaseSeconds. The API key in X-Api-Key must belong to the remote id.");
 
         remotes.MapDelete("/{id}", Deregister)
             .WithSummary("Deregisters a remote, e.g. when it shuts down");
@@ -48,6 +48,11 @@ public static class RegistryEndpoints
         RemoteRegistry registry,
         CancellationToken cancellationToken)
     {
+        if (ForeignKey(id, caller) is { } forbidden)
+        {
+            return forbidden;
+        }
+
         if (!Uri.TryCreate(request.Address, UriKind.Absolute, out var address))
         {
             return TypedResults.ValidationProblem(new Dictionary<string, string[]> { ["address"] = ["Must be an absolute URL."] });
@@ -69,13 +74,29 @@ public static class RegistryEndpoints
         };
     }
 
-    private static Results<NoContent, NotFound, ProblemHttpResult> Deregister(string id, ClaimsPrincipal caller, RemoteRegistry registry) =>
-        registry.Deregister(id, RegistryAuthorization.Owner(caller)) switch
+    private static Results<NoContent, NotFound, ProblemHttpResult> Deregister(string id, ClaimsPrincipal caller, RemoteRegistry registry)
+    {
+        if (ForeignKey(id, caller) is { } forbidden)
+        {
+            return forbidden;
+        }
+
+        return registry.Deregister(id, RegistryAuthorization.Owner(caller)) switch
         {
             DeregistrationOutcome.Deregistered => TypedResults.NoContent(),
             DeregistrationOutcome.NotFound => TypedResults.NotFound(),
-            _ => TypedResults.Problem($"Remote '{id}' is registered by another client.", statusCode: StatusCodes.Status403Forbidden),
+            _ => TypedResults.Problem($"Remote '{id}' is registered with another API key.", statusCode: StatusCodes.Status403Forbidden),
         };
+    }
+
+    /// <summary>An API key belongs to one remote id; it cannot register or remove another.</summary>
+    private static ProblemHttpResult? ForeignKey(string id, ClaimsPrincipal caller)
+    {
+        var owner = RegistryAuthorization.Owner(caller);
+        return string.Equals(owner, id, StringComparison.OrdinalIgnoreCase)
+            ? null
+            : TypedResults.Problem($"The API key belongs to remote '{owner}', not '{id}'.", statusCode: StatusCodes.Status403Forbidden);
+    }
 
     private static RegistrationResponse Response(RegisteredRemote remote, RegistrationOutcome outcome, RegistryOptions options) => new(
         remote.Id,
@@ -96,7 +117,7 @@ public static class RegistryEndpoints
         return new RegistryView(
             snapshot.At,
             new RegistrySettingsView(
-                options.Audience,
+                [.. options.ApiKeys.Where(k => !string.IsNullOrEmpty(k.Value)).Select(k => k.Key).Order(StringComparer.Ordinal)],
                 (int)options.LeaseDuration.TotalSeconds,
                 (int)options.HeartbeatInterval.TotalSeconds,
                 (int)options.HealthCheckInterval.TotalSeconds,

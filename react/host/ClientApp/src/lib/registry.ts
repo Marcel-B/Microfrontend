@@ -12,6 +12,7 @@ export interface RegisteredRemote {
   id: string
   federationName: string
   displayName: Record<string, string>
+  group: string
   version: string | null
   address: string
   entry: string
@@ -22,7 +23,7 @@ export interface RegisteredRemote {
   apiScopeRequested: boolean
   healthUrl: string
   health: RemoteHealth
-  /** Client id of the service that registered the remote. */
+  /** The remote id whose API key registered the remote. */
   owner: string
   registeredAt: string
   lastHeartbeatAt: string
@@ -38,6 +39,7 @@ export interface FormerRemote {
   id: string
   federationName: string
   displayName: Record<string, string>
+  group: string
   version: string | null
   address: string
   owner: string
@@ -56,7 +58,8 @@ export interface RegistryEvent {
 }
 
 export interface RegistrySettings {
-  audience: string
+  /** Remote ids the host has an API key for. */
+  apiKeys: string[]
   leaseSeconds: number
   heartbeatSeconds: number
   healthCheckSeconds: number

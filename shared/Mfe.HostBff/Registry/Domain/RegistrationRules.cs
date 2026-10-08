@@ -19,6 +19,9 @@ public static partial class RegistrationRules
     [GeneratedRegex("^/[A-Za-z0-9._~/-]*$")]
     private static partial Regex PagePathPattern();
 
+    /// <summary>Longer group names do not fit the navigation's heading.</summary>
+    public const int MaxGroupLength = 40;
+
     public static bool IsValidId(string id) => IdPattern().IsMatch(id);
 
     /// <param name="registration">The registration to check.</param>
@@ -52,6 +55,15 @@ public static partial class RegistrationRules
         if (!registration.Address.IsAbsoluteUri || registration.Address.Scheme is not ("http" or "https"))
         {
             problems.Add(new("address", "Must be an absolute http or https URL."));
+        }
+
+        if (string.IsNullOrWhiteSpace(registration.Group))
+        {
+            problems.Add(new("group", "Every remote belongs to a navigation group; only the shell's start page has none."));
+        }
+        else if (registration.Group.Length > MaxGroupLength || registration.Group != registration.Group.Trim() || registration.Group.Any(char.IsControl))
+        {
+            problems.Add(new("group", $"Use at most {MaxGroupLength} characters without leading or trailing spaces."));
         }
 
         if (!registration.HealthPath.StartsWith('/'))

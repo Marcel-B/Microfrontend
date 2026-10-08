@@ -170,6 +170,29 @@ public sealed class RemoteRegistryTests
         Assert.Equal([RegistryEventKind.Rejected], Kinds());
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData(" Demo")]
+    [InlineData("A group name that is far too long for the navigation")]
+    public async Task Every_remote_needs_a_usable_group(string group)
+    {
+        var result = await RegisterAsync(Remote("vue-demo", group: group));
+
+        Assert.Equal(RegistrationOutcome.Invalid, result.Outcome);
+        Assert.Equal("group", Assert.Single(result.Problems).Field);
+    }
+
+    [Fact]
+    public async Task A_new_group_counts_as_a_change()
+    {
+        await RegisterAsync(Remote("vue-demo"));
+
+        await RegisterAsync(Remote("vue-demo", group: "Tools"));
+
+        Assert.Equal(RegistryEventKind.Changed, Kinds()[0]);
+        Assert.Equal("Tools", Assert.Single(_registry.Reachable()).Group);
+    }
+
     [Fact]
     public async Task Remotes_are_listed_in_navigation_order()
     {
@@ -184,9 +207,9 @@ public sealed class RemoteRegistryTests
 
     private List<RegistryEventKind> Kinds() => [.. _registry.Snapshot().History.Select(e => e.Kind)];
 
-    private static RemoteRegistration Remote(string id, string path = "/demo", string federationName = "vueDemo", string? version = "1.0.0", int order = 0) =>
+    private static RemoteRegistration Remote(string id, string path = "/demo", string federationName = "vueDemo", string? version = "1.0.0", int order = 0, string group = "Demo") =>
         new(id, federationName, new Uri("http://localhost:5011"), version, new Dictionary<string, string> { ["de"] = "Demo" },
-            "vue-demo-api", "/health", [Page(path) with { Order = order }]);
+            group, "vue-demo-api", "/health", [Page(path) with { Order = order }]);
 
     private static RemotePage Page(string path) => new(
         path, new Dictionary<string, string> { ["de"] = "Klick-Demo", ["en"] = "Click demo" }, "./DemoPage", "pi pi-star",

@@ -6,10 +6,11 @@ public sealed class RegistryOptions
     public const string SectionName = "Registry";
 
     /// <summary>
-    /// Expected "aud" of the tokens remotes register with: the API scope their client gets via client credentials at
-    /// the Identity server, e.g. "vue-registry".
+    /// API key per remote id, e.g. { "vue-demo": "..." }. A remote sends its key in the X-Api-Key header and may only
+    /// register, renew and deregister that id. Keep the keys out of the repository (user secrets, environment variables
+    /// such as Registry__ApiKeys__vue-demo).
     /// </summary>
-    public string Audience { get; set; } = string.Empty;
+    public Dictionary<string, string> ApiKeys { get; set; } = [];
 
     /// <summary>A registration is dropped when no heartbeat arrives for this long.</summary>
     public TimeSpan LeaseDuration { get; set; } = TimeSpan.FromSeconds(30);

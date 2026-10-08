@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useAuth } from '@/auth/AuthContext'
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { localized } from '@/i18n'
 import { useFrontend } from '@/lib/frontend'
 
@@ -21,6 +21,7 @@ export default function HomePage() {
           <Card key={page.path}>
             <CardHeader>
               <CardTitle>{localized(page.title, i18n.language)}</CardTitle>
+              <CardDescription>{page.group}</CardDescription>
             </CardHeader>
             <CardContent className="text-sm text-muted-foreground">
               {page.roles.length ? t('home.roles', { roles: page.roles.join(', ') }) : t('home.public')}

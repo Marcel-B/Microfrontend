@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Json;
@@ -16,6 +15,8 @@ namespace Mfe.Bff.Tests;
 /// <summary>The registry through the host BFF's HTTP API, with real routing, authorization, YARP and health checks.</summary>
 public sealed class RegistryHttpTests : IAsyncLifetime
 {
+    private const string DemoKey = "key-of-vue-demo";
+
     private WebApplication _host = null!;
     private WebApplication _remote = null!;
     private string _remoteUrl = null!;
@@ -26,11 +27,7 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         (_remote, _remoteUrl) = await TestApps.StartDevServerAsync();
         _host = await TestApps.StartAsync(
             "vue-host",
-            builder =>
-            {
-                builder.AddHostBff();
-                builder.Services.TrustTestKey(RegistryAuthorization.Scheme);
-            },
+            builder => builder.AddHostBff(),
             app =>
             {
                 // Signs in like the OIDC callback would, with the given role.
@@ -38,6 +35,11 @@ public sealed class RegistryHttpTests : IAsyncLifetime
                     CookieAuthenticationDefaults.AuthenticationScheme,
                     new ClaimsPrincipal(new ClaimsIdentity([new Claim("name", "tester"), new Claim("role", role)], "test", "name", "role"))));
                 app.UseHostBff();
+            },
+            new()
+            {
+                ["Registry:ApiKeys:vue-demo"] = DemoKey,
+                ["Registry:ApiKeys:vue-other"] = "key-of-vue-other",
             });
     }
 
@@ -48,14 +50,13 @@ public sealed class RegistryHttpTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Registration_needs_a_token_for_the_registry_audience()
+    public async Task Registration_needs_a_known_api_key()
     {
         var anonymous = await _host.GetTestClient().PutAsJsonAsync("/registry/remotes/vue-demo", Registration());
-        var otherAudience = await RemoteClient(TestTokens.ForService("mfe-vue-demo", "react-registry"))
-            .PutAsJsonAsync("/registry/remotes/vue-demo", Registration());
+        var unknown = await RemoteClient("not-a-key").PutAsJsonAsync("/registry/remotes/vue-demo", Registration());
 
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, otherAudience.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unknown.StatusCode);
     }
 
     [Fact]
@@ -72,6 +73,7 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         var shell = await _host.GetTestClient().GetFromJsonAsync<JsonElement>("/bff/remotes");
         var remote = Assert.Single(shell.GetProperty("remotes").EnumerateArray());
         Assert.Equal("vueDemo", remote.GetProperty("name").GetString());
+        Assert.Equal("Demo", remote.GetProperty("group").GetString());
         Assert.Equal("/remotes/vue-demo/remoteEntry.js", remote.GetProperty("entry").GetString());
         var admin = remote.GetProperty("pages").EnumerateArray().Single(p => p.GetProperty("path").GetString() == "/admin");
         Assert.True(admin.GetProperty("requiresAuth").GetBoolean());
@@ -109,13 +111,16 @@ public sealed class RegistryHttpTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Another_client_cannot_take_over_a_remote()
+    public async Task An_api_key_only_works_for_its_own_remote()
     {
         await RemoteClient().PutAsJsonAsync("/registry/remotes/vue-demo", Registration());
-        var intruder = RemoteClient(TestTokens.ForService("intruder", "vue-registry"));
+        var other = RemoteClient("key-of-vue-other");
 
-        Assert.Equal(HttpStatusCode.Forbidden, (await intruder.PutAsJsonAsync("/registry/remotes/vue-demo", Registration())).StatusCode);
-        Assert.Equal(HttpStatusCode.Forbidden, (await intruder.DeleteAsync("/registry/remotes/vue-demo")).StatusCode);
+        var takeOver = await other.PutAsJsonAsync("/registry/remotes/vue-demo", Registration());
+        Assert.Equal(HttpStatusCode.Forbidden, takeOver.StatusCode);
+        Assert.Contains("belongs to remote 'vue-other'", await takeOver.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Forbidden, (await other.DeleteAsync("/registry/remotes/vue-demo")).StatusCode);
+        Assert.Single((await _host.GetTestClient().GetFromJsonAsync<JsonElement>("/bff/remotes")).GetProperty("remotes").EnumerateArray());
     }
 
     [Fact]
@@ -124,10 +129,13 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         var client = RemoteClient();
 
         var invalid = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(module: "DemoPage"));
+        var withoutGroup = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(group: " "));
         var colliding = await client.PutAsJsonAsync("/registry/remotes/vue-demo", Registration(path: "/debug"));
 
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         Assert.Contains("pages[0].module", await invalid.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.BadRequest, withoutGroup.StatusCode);
+        Assert.Contains("\"group\"", await withoutGroup.Content.ReadAsStringAsync());
         Assert.Equal(HttpStatusCode.Conflict, colliding.StatusCode);
         Assert.Contains("belongs to the shell", await colliding.Content.ReadAsStringAsync());
     }
@@ -143,9 +151,11 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         var registry = await SessionClient("admin").GetFromJsonAsync<JsonElement>("/bff/registry");
         var remote = Assert.Single(registry.GetProperty("remotes").EnumerateArray());
         Assert.Equal("healthy", remote.GetProperty("health").GetString());
-        Assert.Equal("mfe-vue-demo", remote.GetProperty("owner").GetString());
+        Assert.Equal("vue-demo", remote.GetProperty("owner").GetString());
+        Assert.Equal("Demo", remote.GetProperty("group").GetString());
         Assert.False(remote.GetProperty("apiScopeRequested").GetBoolean());
-        Assert.Equal("vue-registry", registry.GetProperty("settings").GetProperty("audience").GetString());
+        Assert.Equal(["vue-demo", "vue-other"], registry.GetProperty("settings").GetProperty("apiKeys").EnumerateArray().Select(k => k.GetString()));
+        Assert.DoesNotContain(DemoKey, registry.GetRawText());
         Assert.Contains(registry.GetProperty("history").EnumerateArray(), e => e.GetProperty("kind").GetString() == "registered");
     }
 
@@ -166,14 +176,14 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         var ui = await client.GetAsync("/swagger/index.html");
 
         Assert.Contains("/registry/remotes/{id}", document);
-        Assert.Contains("registry-token", document);
+        Assert.Contains("X-Api-Key", document);
         Assert.Equal(HttpStatusCode.OK, ui.StatusCode);
     }
 
-    private HttpClient RemoteClient(string? token = null)
+    private HttpClient RemoteClient(string apiKey = DemoKey)
     {
         var client = _host.GetTestClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token ?? TestTokens.ForService("mfe-vue-demo", "vue-registry"));
+        client.DefaultRequestHeaders.Add(RegistryAuthorization.ApiKeyHeader, apiKey);
         return client;
     }
 
@@ -193,11 +203,12 @@ public sealed class RegistryHttpTests : IAsyncLifetime
         return client;
     }
 
-    private object Registration(string path = "/demo", string module = "./DemoPage") => new
+    private object Registration(string path = "/demo", string module = "./DemoPage", string group = "Demo") => new
     {
         federationName = "vueDemo",
         address = _remoteUrl,
         version = "1.2.3",
+        group,
         apiScope = "some-api",
         healthPath = "/health",
         pages = new object[]

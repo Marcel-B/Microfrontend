@@ -59,7 +59,7 @@ public sealed class RemoteRegistry(
 
             if (existing is not null && existing.Owner != owner)
             {
-                var problem = new RegistrationProblem("id", $"Remote '{registration.Id}' is registered by another client.");
+                var problem = new RegistrationProblem("id", $"Remote '{registration.Id}' is registered with another API key.");
                 Reject(registration.Id, owner, problem.Message);
                 return new(RegistrationOutcome.Forbidden, null, [problem]);
             }
@@ -110,7 +110,7 @@ public sealed class RemoteRegistry(
 
             if (remote.Owner != owner)
             {
-                Reject(id, owner, "Deregistration by another client.");
+                Reject(id, owner, "Deregistration with another API key.");
                 return DeregistrationOutcome.Forbidden;
             }
 
@@ -147,7 +147,7 @@ public sealed class RemoteRegistry(
                 .. store.All()
                     .Where(r => r.Health == RemoteHealth.Healthy)
                     .Select(r => r.Registration)
-                    .OrderBy(r => r.Pages.Min(p => p.Order))
+                    .OrderBy(r => r.Order)
                     .ThenBy(r => r.Id, StringComparer.Ordinal),
             ];
         }
@@ -223,5 +223,5 @@ public sealed class RemoteRegistry(
     private void PublishRoutes() => routes.Update([.. store.All().Select(r => r.Registration)]);
 
     private static string Describe(RemoteRegistration registration) =>
-        $"{registration.Address} v{registration.Version ?? "?"}, pages {string.Join(", ", registration.Pages.Select(p => p.Path))}";
+        $"{registration.Address} v{registration.Version ?? "?"}, group '{registration.Group}', pages {string.Join(", ", registration.Pages.Select(p => p.Path))}";
 }

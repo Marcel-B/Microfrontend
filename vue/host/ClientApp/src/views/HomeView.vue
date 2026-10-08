@@ -22,6 +22,7 @@ const { t, locale } = useI18n()
         <template #title>
           <span class="flex items-center gap-2"><i :class="page.icon ?? 'pi pi-file'" /> {{ localized(page.title, locale) }}</span>
         </template>
+        <template #subtitle>{{ page.group }}</template>
         <template #content>
           <p class="text-sm text-muted-color">
             {{ page.roles.length ? t('home.roles', { roles: page.roles.join(', ') }) : t('home.public') }}

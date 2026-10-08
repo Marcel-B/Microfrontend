@@ -26,7 +26,7 @@ public sealed class RegisteredRemote
 
     public RemoteRegistration Registration { get; private set; }
 
-    /// <summary>Client id of the service that registered the remote. Only it may renew or deregister it.</summary>
+    /// <summary>Who registered the remote: the remote id its API key belongs to. Only it may renew or deregister it.</summary>
     public string Owner { get; }
 
     public DateTimeOffset RegisteredAt { get; }

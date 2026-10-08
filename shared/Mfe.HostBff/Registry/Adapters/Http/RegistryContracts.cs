@@ -22,6 +22,9 @@ public sealed class RegisterRemoteRequest
     [Description("Name of the remote per language, shown on the registry page, e.g. { \"de\": \"Demo\", \"en\": \"Demo\" }.")]
     public Dictionary<string, string> DisplayName { get; init; } = [];
 
+    [Description("Navigation group the remote's pages appear under, e.g. \"Demo\". Remotes with the same group are listed together, ordered by their pages' order. Only the shell's start page has no group.")]
+    public required string Group { get; init; }
+
     [Description("API scope (token audience) the remote's API expects. The registry page warns when the host does not request it at login.")]
     public string? ApiScope { get; init; }
 
@@ -36,6 +39,7 @@ public sealed class RegisterRemoteRequest
         address,
         Version,
         DisplayName,
+        Group,
         string.IsNullOrWhiteSpace(ApiScope) ? null : ApiScope,
         HealthPath,
         [.. Pages.Select(p => p.ToDomain())]);
@@ -62,7 +66,7 @@ public sealed class RegisterPageRequest
 
     public bool ShowInNav { get; init; } = true;
 
-    [Description("Position in the navigation; lower comes first.")]
+    [Description("Position in the navigation group; lower comes first. Groups are ordered by their lowest entry.")]
     public int Order { get; init; }
 
     public RemotePage ToDomain() => new(Path, Title, Module, Icon, RequiresAuth, Roles, ShowInNav, Order);
@@ -81,13 +85,14 @@ public sealed record RegistrationResponse(
 /// <summary>Response of GET /bff/remotes: the reachable remotes the shell loads.</summary>
 public sealed record ShellRemotes(IReadOnlyList<ShellRemote> Remotes);
 
-public sealed record ShellRemote(string Id, string Name, string Entry, string? Version, IReadOnlyList<ShellPage> Pages)
+public sealed record ShellRemote(string Id, string Name, string Entry, string? Version, string Group, IReadOnlyList<ShellPage> Pages)
 {
     public static ShellRemote From(RemoteRegistration registration) => new(
         registration.Id,
         registration.FederationName,
         registration.Entry,
         registration.Version,
+        registration.Group,
         [.. registration.Pages.OrderBy(p => p.Order).Select(ShellPage.From)]);
 }
 
@@ -114,7 +119,8 @@ public sealed record RegistryView(
     IReadOnlyList<RegistryEvent> History);
 
 public sealed record RegistrySettingsView(
-    string Audience,
+    [property: Description("Remote ids the host has an API key for; only these can register.")]
+    IReadOnlyList<string> ApiKeys,
     int LeaseSeconds,
     int HeartbeatSeconds,
     int HealthCheckSeconds,
@@ -125,6 +131,7 @@ public sealed record RemoteView(
     string Id,
     string FederationName,
     IReadOnlyDictionary<string, string> DisplayName,
+    string Group,
     string? Version,
     string Address,
     string Entry,
@@ -149,7 +156,7 @@ public sealed record RemoteView(
     {
         var r = remote.Registration;
         return new(
-            r.Id, r.FederationName, r.DisplayName, r.Version, r.Address.ToString(), r.Entry, r.UiPath, r.ApiPath, r.ApiScope,
+            r.Id, r.FederationName, r.DisplayName, r.Group, r.Version, r.Address.ToString(), r.Entry, r.UiPath, r.ApiPath, r.ApiScope,
             r.ApiScope is null || requestedScopes.Contains(r.ApiScope),
             r.HealthUrl.ToString(), remote.Health, remote.Owner, remote.RegisteredAt, remote.LastHeartbeatAt,
             remote.LeaseExpiresAt, remote.LastCheckedAt, remote.LastHealthyAt, remote.ConsecutiveFailures, remote.LastError,
@@ -161,6 +168,7 @@ public sealed record FormerRemoteView(
     string Id,
     string FederationName,
     IReadOnlyDictionary<string, string> DisplayName,
+    string Group,
     string? Version,
     string Address,
     string Owner,
@@ -172,7 +180,7 @@ public sealed record FormerRemoteView(
     public static FormerRemoteView From(FormerRemote former)
     {
         var r = former.Registration;
-        return new(r.Id, r.FederationName, r.DisplayName, r.Version, r.Address.ToString(), former.Owner, former.RegisteredAt,
+        return new(r.Id, r.FederationName, r.DisplayName, r.Group, r.Version, r.Address.ToString(), former.Owner, former.RegisteredAt,
             former.LeftAt, former.Reason, [.. r.Pages.OrderBy(p => p.Order).Select(ShellPage.From)]);
     }
 }

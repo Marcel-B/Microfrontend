@@ -5,13 +5,15 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
+using Mfe.RemoteBff.Registration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Mfe.Bff.Tests;
 
-/// <summary>A remote BFF registers at a fake host (and Identity server) on a real socket, renews and deregisters.</summary>
+/// <summary>A remote BFF registers at a fake host on a real socket with its API key, renews and deregisters.</summary>
 public sealed class HostRegistrationTests : IAsyncLifetime
 {
-    private readonly ConcurrentQueue<(string Method, string Path, string? Authorization, string Body)> _calls = new();
+    private readonly ConcurrentQueue<(string Method, string Path, string? ApiKey, string Body)> _calls = new();
     private WebApplication _host = null!;
     private string _hostUrl = null!;
 
@@ -20,13 +22,6 @@ public sealed class HostRegistrationTests : IAsyncLifetime
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         _host = builder.Build();
-        _host.MapGet("/.well-known/openid-configuration", (HttpContext context) =>
-            Results.Json(new Dictionary<string, string> { ["token_endpoint"] = $"{context.Request.Scheme}://{context.Request.Host}/connect/token" }));
-        _host.MapPost("/connect/token", async (HttpContext context) =>
-        {
-            await RecordAsync(context);
-            return Results.Json(new Dictionary<string, object> { ["access_token"] = "remote-token", ["expires_in"] = 300 });
-        });
         _host.MapPut("/registry/remotes/{id}", async (string id, HttpContext context) =>
         {
             await RecordAsync(context);
@@ -49,9 +44,8 @@ public sealed class HostRegistrationTests : IAsyncLifetime
         var remote = await RemoteBffTests.StartRemoteBffAsync(new()
         {
             ["Registration:HostUrl"] = _hostUrl,
-            ["Registration:Authority"] = _hostUrl,
             ["Registration:Address"] = "http://localhost:5011",
-            ["Registration:ClientSecret"] = "secret",
+            ["Registration:ApiKey"] = "key-of-vue-demo",
         });
 
         await WaitUntilAsync(async () => (await remote.GetTestClient().GetAsync("/health/ready")).StatusCode == HttpStatusCode.OK);
@@ -59,21 +53,19 @@ public sealed class HostRegistrationTests : IAsyncLifetime
         await remote.StopAsync();
         await remote.DisposeAsync();
 
-        var token = Assert.Single(_calls, c => c.Path == "/connect/token");
-        Assert.Contains("grant_type=client_credentials", token.Body);
-        Assert.Contains("scope=vue-registry", token.Body);
-
         var put = _calls.First(c => c.Method == "PUT");
         Assert.Equal("/registry/remotes/vue-demo", put.Path);
-        Assert.Equal("Bearer remote-token", put.Authorization);
+        Assert.Equal("key-of-vue-demo", put.ApiKey);
         var body = JsonDocument.Parse(put.Body).RootElement;
         Assert.Equal("vueDemo", body.GetProperty("federationName").GetString());
         Assert.Equal("http://localhost:5011", body.GetProperty("address").GetString());
         Assert.Equal("vue-demo-api", body.GetProperty("apiScope").GetString());
+        Assert.Equal("Demo", body.GetProperty("group").GetString());
         Assert.Equal(["/demo", "/admin"], body.GetProperty("pages").EnumerateArray().Select(p => p.GetProperty("path").GetString()));
 
         Assert.Equal("DELETE", _calls.Last().Method);
         Assert.Equal("/registry/remotes/vue-demo", _calls.Last().Path);
+        Assert.Equal("key-of-vue-demo", _calls.Last().ApiKey);
     }
 
     [Fact]
@@ -82,12 +74,14 @@ public sealed class HostRegistrationTests : IAsyncLifetime
         await using var remote = await RemoteBffTests.StartRemoteBffAsync(new()
         {
             ["Registration:HostUrl"] = "http://127.0.0.1:9",
-            ["Registration:TokenEndpoint"] = $"{_hostUrl}/connect/token",
             ["Registration:Address"] = "http://localhost:5011",
+            ["Registration:ApiKey"] = "key-of-vue-demo",
         });
         var client = remote.GetTestClient();
 
-        await WaitUntilAsync(() => Task.FromResult(_calls.Any(c => c.Path == "/connect/token")));
+        var state = remote.Services.GetRequiredService<RegistrationState>();
+
+        await WaitUntilAsync(() => Task.FromResult(state.Current.LastError is not null));
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health")).StatusCode);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, (await client.GetAsync("/health/ready")).StatusCode);
@@ -96,7 +90,7 @@ public sealed class HostRegistrationTests : IAsyncLifetime
     private async Task RecordAsync(HttpContext context)
     {
         using var reader = new StreamReader(context.Request.Body);
-        _calls.Enqueue((context.Request.Method, context.Request.Path, context.Request.Headers.Authorization.ToString(), await reader.ReadToEndAsync()));
+        _calls.Enqueue((context.Request.Method, context.Request.Path, context.Request.Headers["X-Api-Key"].ToString(), await reader.ReadToEndAsync()));
     }
 
     private static async Task WaitUntilAsync(Func<Task<bool>> condition)

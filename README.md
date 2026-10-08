@@ -13,7 +13,7 @@ Browser ──► Vue Host-BFF :5010 (ASP.NET Core + YARP, Cookie-Session)
               ├─ /bff/login, /bff/logout, /bff/user   Anmeldung per OIDC (Code + PKCE) am Identity Server
               ├─ /bff/remotes                         erreichbare Remotes für die Shell
               ├─ /bff/registry                        alles über die Remotes, nur für Admins
-              ├─ /registry/remotes/{id}      ◄── Remotes melden sich an (Heartbeat) und ab
+              ├─ /registry/remotes/{id}      ◄── Remotes melden sich mit API-Key an (Heartbeat) und ab
               ├─ /swagger                             Swagger UI der Host-API
               ├─ /remotes/vue-demo/**        ──► Vue Demo-BFF :5011 ──► Remote-UI (Vite :5174)   (Route aus der Registry)
               ├─ /api/vue-demo/**            ──► Vue Demo-BFF :5011  (Access Token als Bearer, nie das Cookie)
@@ -59,8 +59,8 @@ flowchart LR
   remoteBff --> remoteUi
   hostBff -->|"/remotes/…-components"| library
   hostBff -->|"OIDC"| identity
-  remoteBff -->|"Signaturschlüssel,<br/>eigenes Token"| identity
-  remoteBff -->|"meldet sich an,<br/>Heartbeat"| hostBff
+  remoteBff -->|"Signaturschlüssel"| identity
+  remoteBff -->|"meldet sich mit API-Key an,<br/>Heartbeat"| hostBff
   shell -.->|"lädt Seiten"| remoteUi
   remoteUi -.->|"importiert"| button
   remoteUi -.->|"lädt Texte"| i18n
@@ -204,19 +204,16 @@ Läuft auf Port 5001 noch eine alte Identity-Instanz, nutzt `npm run dev` sie mi
 
 ## Remote-Registry
 
-Remotes stehen nicht in der Konfiguration des Host-BFF, sie melden sich selbst an. Ein Remote-BFF schickt beim Start seine Beschreibung an `PUT /registry/remotes/{id}` seines Host-BFF: Seiten mit Route, Titel pro Sprache, Icon und Rollen, dazu die Adresse, unter der der Host es erreicht. Ab dann leitet der Host `/remotes/{id}/` und `/api/{id}/` dorthin weiter und die Shell zeigt die Seiten. Beim Herunterfahren meldet es sich mit `DELETE` wieder ab.
+Remotes stehen nicht in der Konfiguration des Host-BFF, sie melden sich selbst an. Ein Remote-BFF schickt beim Start seine Beschreibung mit seinem API-Key an `PUT /registry/remotes/{id}` seines Host-BFF: Seiten mit Route, Titel pro Sprache, Icon und Rollen, die Gruppe in der Navigation und die Adresse, unter der der Host es erreicht. Ab dann leitet der Host `/remotes/{id}/` und `/api/{id}/` dorthin weiter und die Shell zeigt die Seiten. Beim Herunterfahren meldet es sich mit `DELETE` wieder ab.
 
 ```mermaid
 sequenceDiagram
   autonumber
   participant R as Remote-BFF
-  participant I as Identity Server
   participant H as Host-BFF
   participant S as Shell (Browser)
 
-  R->>I: Client Credentials (mfe-vue-demo, Scope vue-registry)
-  I-->>R: Access Token (sub = mfe-vue-demo, aud = vue-registry)
-  R->>H: PUT /registry/remotes/vue-demo (Seiten, Adresse, Version …)
+  R->>H: PUT /registry/remotes/vue-demo mit X-Api-Key (Seiten, Gruppe, Adresse, Version …)
   H->>R: GET /health
   H-->>R: 200 registered, heartbeatSeconds = 10
   Note over H: YARP-Routen /remotes/vue-demo/ und /api/vue-demo/
@@ -238,13 +235,20 @@ sequenceDiagram
 | `id` (im Pfad) | Pfadsegment für `/remotes/{id}/` und `/api/{id}/`, z. B. `vue-demo`. Muss zu `Ui:BasePath` und der Vite-`base` des Remotes passen. |
 | `federationName` | Module-Federation-Name aus der `vite.config.ts`, z. B. `vueDemo`. |
 | `address` | Wo der Host das Remote-BFF erreicht, z. B. `http://localhost:5011`. |
-| `pages[]` | Je Seite: `path` (Route in der Shell), `title` pro Sprache (Navigation und Tab, Deutsch und Englisch Pflicht), `module` (exposed Modul), `icon` (PrimeIcons-Klasse in Vue, lucide-Name in React), `roles` (wer die Seite sehen darf), `requiresAuth`, `showInNav`, `order` (Reihenfolge in der Navigation). |
+| `group` | Pflicht: Gruppe in der Navigation, z. B. `Demo`. Einfach ein Name (höchstens 40 Zeichen), er steht in beiden Sprachen gleich über den Einträgen. |
+| `pages[]` | Je Seite: `path` (Route in der Shell), `title` pro Sprache (Navigation und Tab, Deutsch und Englisch Pflicht), `module` (exposed Modul), `icon` (PrimeIcons-Klasse in Vue, lucide-Name in React), `roles` (wer die Seite sehen darf), `requiresAuth`, `showInNav`, `order` (Sortierindex in der Gruppe). |
 | `version` | Wird auf der Registry-Seite angezeigt; ohne Angabe die Version des Remote-BFF. |
 | `displayName` | Name des Remotes pro Sprache für die Registry-Seite. |
 | `apiScope` | Audience, die die API des Remotes erwartet; ohne Angabe `Jwt:Audience`. Die Registry-Seite warnt, wenn das Host-BFF diesen Scope beim Login nicht anfordert, denn dann lehnt die API die Tokens der Benutzer ab. |
 | `healthPath` | Pfad, den der Host für den Health-Check aufruft, Standard `/health`. |
 
-Im Remote-BFF steht das unter `Registration` in der `appsettings.json` (`Remote` mit den Feldern oben, dazu `HostUrl`, `Address`, `ClientId`, `ClientSecret`, `Scope`), den Rest erledigt `shared/Mfe.RemoteBff/Registration`. Die Antwort des Hosts nennt das Heartbeat-Intervall, der Host gibt den Takt vor.
+Im Remote-BFF steht das unter `Registration` in der `appsettings.json` (`Remote` mit den Feldern oben, dazu `HostUrl`, `Address` und `ApiKey`), den Rest erledigt `shared/Mfe.RemoteBff/Registration`. Die Antwort des Hosts nennt das Heartbeat-Intervall, der Host gibt den Takt vor.
+
+### Navigation in Gruppen
+
+Die Navigation hat eine Ebene mehr als die Liste der Seiten: Ganz oben steht die Startseite, als einziger Eintrag ohne Gruppe. Darunter folgen die Gruppen mit ihrem Namen als Überschrift. Remotes mit derselben `group` landen in derselben Gruppe, ihre Seiten sortiert nach `order`, egal von welchem Remote sie kommen. Eine Gruppe steht dort, wo ihr niedrigster `order` sie hinstellt, bei Gleichstand entscheidet der Name. Seiten, die ein Benutzer nicht sehen darf, fallen vorher heraus; bleibt von einer Gruppe nichts übrig, erscheint auch ihre Überschrift nicht. Die eigenen Seiten der Shell (Debug, Registry) stehen am Ende unter „System“. Die Startseite zeigt die Gruppe auf jeder Karte.
+
+Beispiel: Das Demo-Remote meldet `Klick-Demo` (`order` 10) und `Administration` (20) in der Gruppe `Demo` an. Meldet sich ein zweites Remote mit einer Seite (`order` 15) ebenfalls unter `Demo` an, steht sie zwischen den beiden.
 
 ### Host-Neustart: Heartbeat statt Gedächtnis
 
@@ -269,20 +273,23 @@ Das Remote-BFF bietet `/health` (läuft) und `/health/ready` (läuft und ist bei
 
 ### Absicherung
 
-- Die Anmelde-API verlangt ein Access Token des Identity Servers mit der Audience `Registry:Audience` (`vue-registry` bzw. `react-registry`). Jedes Remote-BFF hat dafür einen eigenen Dienst-Client mit Client Credentials (`mfe-vue-demo`, `mfe-react-demo`, siehe Identity-Repo).
-- Die Client-ID (`sub` im Token) wird Eigentümer der Anmeldung: Ein anderer Client kann sie weder ändern noch abmelden (403).
+- Die Anmelde-API verlangt einen API-Key im Header `X-Api-Key`. Das Host-BFF kennt einen Key pro Remote-Id (`Registry:ApiKeys`, z. B. `"vue-demo": "…"`); ein unbekannter Key ergibt 401. Der Identity Server ist nicht beteiligt: Im Betrieb liegt er nicht in unserer Hand, Dienst-Clients lassen sich dort nicht anlegen. Die Anmeldung der Benutzer bleibt davon unberührt.
+- Ein Key gilt nur für seine Id: Mit dem Key von `vue-demo` lässt sich kein anderes Remote anmelden, ändern oder abmelden (403). Ein neues Remote braucht deshalb einen Eintrag unter `Registry:ApiKeys`, sonst nichts am Host.
+- Die Keys gehören wie Client Secrets in User Secrets oder Umgebungsvariablen (`Registry__ApiKeys__vue-demo`, im Remote `Registration__ApiKey`). Nur `appsettings.Development.json` enthält Keys zum Ausprobieren, dazu je einen für die Remote-Id `<variante>-e2e`, mit der die Playwright-Tests ein zweites Remote anmelden. Der Host vergleicht Keys in konstanter Zeit; die Registry-Seite zeigt nur, für welche Ids es Keys gibt, nie die Keys selbst.
 - Seiten dürfen keine Pfade der Shell belegen (`/`, `/debug`, `/login`, `/401`, `/403`, `/bff`, `/api`, `/remotes`, `/swagger`, … siehe `Registry:ReservedPaths`) und keine eines anderen Remotes (409). Ids, die schon eine statische Route unter `ReverseProxy` haben (die Komponenten-Bibliothek), sind ebenfalls vergeben.
-- Der Host leitet an die Adresse weiter, die das Remote angibt. Wer einen Dienst-Client hat, kann also Verkehr umlenken; Dienst-Clients bekommen deshalb nur vertrauenswürdige Dienste.
+- Der Host leitet an die Adresse weiter, die das Remote angibt. Wer einen Key hat, kann also Verkehr für dessen Id umlenken; Keys bekommen deshalb nur vertrauenswürdige Dienste.
 
 ### Registry-Seite und Swagger UI
 
-Admins (Rolle `admin`, `Registry:AdminRole`) sehen in der Navigation „Registry“ (`/debug/registry`): angemeldete Remotes mit Status, Version, Adresse, Client, letztem Heartbeat, Lease, Health-URL, letztem Fehler und ihren Seiten mit Titeln, Icons, Rollen und Reihenfolge; darunter abgemeldete und abgelaufene Remotes mit Zeitpunkt und den Verlauf aller Ereignisse (angemeldet, geändert, abgemeldet, abgelaufen, erreichbar, nicht erreichbar, abgelehnt). Die Seite liest `GET /bff/registry`, das ebenfalls nur Admins beantwortet, und aktualisiert sich alle 5 s. Verlauf und Liste sind wie die Anmeldungen nur im Speicher und nach einem Host-Neustart leer.
+Admins (Rolle `admin`, `Registry:AdminRole`) sehen in der Navigation „Registry“ (`/debug/registry`): für welche Remote-Ids es API-Keys gibt, angemeldete Remotes mit Status, Gruppe, Version, Adresse, letztem Heartbeat, Lease, Health-URL, letztem Fehler und ihren Seiten mit Titeln, Icons, Rollen und Reihenfolge; darunter abgemeldete und abgelaufene Remotes mit Zeitpunkt und den Verlauf aller Ereignisse (angemeldet, geändert, abgemeldet, abgelaufen, erreichbar, nicht erreichbar, abgelehnt). Die Seite liest `GET /bff/registry`, das ebenfalls nur Admins beantwortet, und aktualisiert sich alle 5 s. Verlauf und Liste sind wie die Anmeldungen nur im Speicher und nach einem Host-Neustart leer.
 
-Die Swagger UI des Host-BFF liegt unter `/swagger` (Vue: http://localhost:5010/swagger, React: http://localhost:5020/swagger), das OpenAPI-Dokument unter `/openapi/v1.json`; `OpenApi:Enabled: false` schaltet beides ab. Zum Ausprobieren der Anmelde-API ein Token holen und unter „Authorize“ eintragen:
+Die Swagger UI des Host-BFF liegt unter `/swagger` (Vue: http://localhost:5010/swagger, React: http://localhost:5020/swagger), das OpenAPI-Dokument unter `/openapi/v1.json`; `OpenApi:Enabled: false` schaltet beides ab. Zum Ausprobieren der Anmelde-API unter „Authorize“ einen Key aus `Registry:ApiKeys` eintragen, in Development etwa den für die Id `vue-e2e` aus `vue/host/appsettings.Development.json`. Ohne Swagger:
 
 ```bash
-curl -s http://localhost:5001/connect/token \
-  -d grant_type=client_credentials -d client_id=mfe-vue-demo -d client_secret=dev-secret-change-me -d scope=vue-registry
+KEY=…   # Registry:ApiKeys:vue-e2e
+curl -X PUT http://localhost:5010/registry/remotes/vue-e2e -H "X-Api-Key: $KEY" \
+  -H 'Content-Type: application/json' -d '{"federationName":"vueE2e","address":"http://localhost:5011","group":"Test",
+  "pages":[{"path":"/probe","title":{"de":"Probe","en":"Probe"},"module":"./DemoPage","order":30}]}'
 ```
 
 ### Aufbau im Host-BFF (Ports and Adapters)
@@ -326,7 +333,7 @@ Nur `RegistryExtensions` kennt alle Teile und verdrahtet sie. Die HTTP-Verträge
 
 | Schlüssel | Standard | |
 | --- | --- | --- |
-| `Audience` | – | Audience der Anmelde-Tokens, z. B. `vue-registry` |
+| `ApiKeys` | – | API-Key pro Remote-Id, z. B. `"vue-demo": "…"`; nur aus User Secrets oder Umgebungsvariablen |
 | `LeaseDuration` | `00:00:30` | ohne Heartbeat so lange gültig |
 | `HeartbeatInterval` | `00:00:10` | wird den Remotes in jeder Antwort mitgeteilt |
 | `HealthCheckInterval`, `HealthCheckTimeout` | `00:00:10`, `00:00:03` | |
@@ -365,8 +372,8 @@ Wo Module Federation vom Muster aus YuE-UI abweicht:
 
 1. `vue/remote-demo` bzw. `react/remote-demo` kopieren. In `ClientApp/`: `name` in `package.json`, `base`, `server.port` und den Federation-`name` in `vite.config.ts` anpassen, einen eigenen Tailwind-Prefix wählen (`remote.css`, bei React zusätzlich `components.json` und `src/lib/utils.ts`). Im Projekt selbst: Projektname, Port in `launchSettings.json`, `Ui:BasePath`, `Ui:DevServer`, den Eintrag unter `DevServers` und `Jwt:Audience` anpassen.
 2. Seiten über `exposes` freigeben (`'./MeineSeite': './src/pages/MeineSeite.vue'`), jeweils mit Default-Export und eigenen Texten in Deutsch und Englisch. Texte, die es schon im gemeinsamen Wortschatz gibt, über `src/common.ts` von dort nehmen (die Datei mitkopieren und die Ersatztexte auf die genutzten Keys beschränken).
-3. Unter `Registration` in der `appsettings.json` des Remotes `Address`, `ClientId` und unter `Remote` `Id` (gleich dem Pfadsegment von `Ui:BasePath`), `FederationName` und die `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`, `Order`) eintragen; das `ClientSecret` in `appsettings.Development.json` bzw. User Secrets.
-4. Im Identity-Repo einen Dienst-Client für das Remote anlegen (`"GrantTypes": [ "client_credentials" ]`, Scope `<variante>-registry`). Hat das Remote eine API: ihren Scope beim Client des Host-BFF eintragen und im Host-BFF unter `Oidc:Scopes` anfordern. Sonst muss am Host-BFF nichts geändert werden, Routen und Navigation entstehen aus der Anmeldung.
+3. Unter `Registration` in der `appsettings.json` des Remotes `Address` und unter `Remote` `Id` (gleich dem Pfadsegment von `Ui:BasePath`), `FederationName`, `Group` und die `Pages` (`Path`, `Title` pro Sprache, `Module`, `Icon`, optional `Roles`, `RequiresAuth`, `ShowInNav`, `Order`) eintragen; den `ApiKey` in `appsettings.Development.json` bzw. User Secrets.
+4. Im Host-BFF denselben Key unter `Registry:ApiKeys:<id>` eintragen (in Development in `appsettings.Development.json`, sonst User Secrets oder Umgebungsvariable). Hat das Remote eine API: ihren Scope beim Client des Host-BFF im Identity Server freigeben und im Host-BFF unter `Oidc:Scopes` anfordern. Sonst muss am Host-BFF nichts geändert werden, Routen und Navigation entstehen aus der Anmeldung.
 5. Das Projekt in `Microfrontend.slnx`, seine `ClientApp` in `workspaces` der `package.json` und das BFF in `e2e/playwright.config.ts` eintragen.
 
 Ein Remote lässt sich auch allein entwickeln: `npm run dev -w @mfe/vue-remote-demo` (und für den Button `npm run dev -w @mfe/vue-components`), dann http://localhost:5174/remotes/vue-demo/ öffnen, mit `?lang=en` auf Englisch. Ohne Host-BFF gibt es keine Anmeldung, die Seite zeigt dann „Nicht angemeldet“. Die Komponenten-Bibliothek hat unter http://localhost:5175/remotes/vue-components/ eine eigene Vorschau.
@@ -385,7 +392,7 @@ Playwright startet Identity und alle BFFs (die ihre Vite-Server mitbringen) selb
 ## Betrieb
 
 - `dotnet publish vue/host -c Release -o …` liefert das Host-BFF mit der gebauten Shell in `wwwroot`, `dotnet publish vue/remote-demo …` das Demo-BFF mit seiner Remote-UI. Ohne `Shell:DevServer`/`Ui:DevServer` (die nur in `appsettings.Development.json` stehen) liefern die BFFs diese Dateien aus. Die Komponenten-Bibliothek baut `npm run build -w @mfe/vue-components` nach `vue/components/dist`; sie liegt als statische Dateien irgendwo (CDN, Nginx, Blob Storage), der Cluster `<variante>-components` im Host-BFF zeigt dorthin.
-- Ein Remote-BFF meldet sich unter `Registration:HostUrl` an und nennt `Registration:Address` als seine Adresse; beide zeigen in `appsettings.json` auf `localhost`. In Produktion auf die echten Adressen setzen, `Registration:ClientSecret` wie `Oidc:ClientSecret` aus User Secrets bzw. Umgebungsvariablen.
+- Ein Remote-BFF meldet sich unter `Registration:HostUrl` an und nennt `Registration:Address` als seine Adresse; beide zeigen in `appsettings.json` auf `localhost`. In Produktion auf die echten Adressen setzen, `Registration:ApiKey` (Remote) und `Registry:ApiKeys` (Host) wie `Oidc:ClientSecret` aus User Secrets bzw. Umgebungsvariablen.
 - `Oidc:ClientSecret` gehört in User Secrets bzw. Umgebungsvariablen (`Oidc__ClientSecret`), nicht in die Datei.
 - Die Session liegt im Cookie (inklusive Tokens, ASP.NET Core teilt große Cookies automatisch). Bei vielen Claims oder mehreren Instanzen eines Host-BFF lohnt ein serverseitiger `ITicketStore` und ein gemeinsamer Data-Protection-Key-Ring.
 - HTTPS: In Development läuft alles über `http://localhost`. In Produktion `Oidc:RequireHttpsMetadata` und `Jwt:RequireHttpsMetadata` auf `true` lassen.

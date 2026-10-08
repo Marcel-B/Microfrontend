@@ -83,8 +83,11 @@ function name(texts: Record<string, string>, fallback: string): string {
         <template #title>{{ t('registry.settings') }}</template>
         <template #content>
           <dl class="grid grid-cols-[12rem_1fr] gap-x-4 gap-y-2 text-sm" data-testid="registry-settings">
-            <dt class="text-muted-color">{{ t('registry.audience') }}</dt>
-            <dd>{{ registry.settings.audience }}</dd>
+            <dt class="text-muted-color">{{ t('registry.apiKeys') }}</dt>
+            <dd class="flex flex-wrap gap-1">
+              <Tag v-for="id in registry.settings.apiKeys" :key="id" :value="id" severity="secondary" />
+              <span v-if="!registry.settings.apiKeys.length" class="text-muted-color">{{ t('registry.noApiKeys') }}</span>
+            </dd>
             <dt class="text-muted-color">{{ t('registry.timing') }}</dt>
             <dd>
               {{
@@ -127,9 +130,9 @@ function name(texts: Record<string, string>, fallback: string): string {
                 />
               </template>
             </Column>
+            <Column field="group" :header="t('registry.group')" />
             <Column field="version" :header="t('registry.version')" />
             <Column field="address" :header="t('registry.address')" body-class="break-all" />
-            <Column field="owner" :header="t('registry.owner')" />
             <Column :header="t('registry.heartbeat')">
               <template #body="{ data }">{{ ago(data.lastHeartbeatAt) }}</template>
             </Column>
@@ -211,12 +214,12 @@ function name(texts: Record<string, string>, fallback: string): string {
             <Column :header="t('registry.leftAt')">
               <template #body="{ data }">{{ dateTime(data.leftAt) }}</template>
             </Column>
+            <Column field="group" :header="t('registry.group')" />
             <Column field="version" :header="t('registry.version')" />
             <Column field="address" :header="t('registry.address')" body-class="break-all" />
             <Column :header="t('registry.pages')">
               <template #body="{ data }">{{ data.pages.map((p: { path: string }) => p.path).join(', ') }}</template>
             </Column>
-            <Column field="owner" :header="t('registry.owner')" />
           </DataTable>
         </template>
       </Card>
@@ -235,7 +238,6 @@ function name(texts: Record<string, string>, fallback: string): string {
                 <Tag :value="t(`registry.events.${data.kind}`)" :severity="eventSeverity[data.kind as RegistryEventKind]" />
               </template>
             </Column>
-            <Column field="owner" :header="t('registry.owner')" />
             <Column field="detail" :header="t('registry.detail')" body-class="break-all" />
           </DataTable>
         </template>

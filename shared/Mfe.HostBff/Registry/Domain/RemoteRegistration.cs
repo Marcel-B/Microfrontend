@@ -10,6 +10,7 @@ public sealed record RemoteRegistration(
     Uri Address,
     string? Version,
     IReadOnlyDictionary<string, string> DisplayName,
+    string Group,
     string? ApiScope,
     string HealthPath,
     IReadOnlyList<RemotePage> Pages)
@@ -23,6 +24,9 @@ public sealed record RemoteRegistration(
     public string Entry => $"{UiPath}remoteEntry.js";
 
     public Uri HealthUrl => new(Address, HealthPath);
+
+    /// <summary>Position of the remote in its navigation group: its first page.</summary>
+    public int Order => Pages.Count == 0 ? 0 : Pages.Min(p => p.Order);
 }
 
 /// <summary>A page of a remote: a route in the shell and, if <see cref="ShowInNav"/>, an entry in its navigation.</summary>
