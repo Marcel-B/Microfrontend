@@ -4,23 +4,22 @@ import { BrowserRouter } from 'react-router'
 import App from './App'
 import { AuthProvider } from './auth/AuthContext'
 import { initI18n } from './i18n'
-import { FrontendContext } from './lib/frontend'
+import { FrontendProvider } from './lib/FrontendProvider'
 import { isOriginShown, setOriginShown } from './lib/origin'
-import { createRemoteRoutes, loadFrontendConfig } from './lib/remotes'
+import { loadFrontendConfig } from './lib/remotes'
 import './index.css'
 
 setOriginShown(isOriginShown())
 const [config] = await Promise.all([loadFrontendConfig(), initI18n()])
-const frontend = { config, routes: createRemoteRoutes(config) }
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <FrontendContext.Provider value={frontend}>
+    <FrontendProvider initial={config}>
       <AuthProvider>
         <BrowserRouter>
           <App />
         </BrowserRouter>
       </AuthProvider>
-    </FrontendContext.Provider>
+    </FrontendProvider>
   </StrictMode>,
 )

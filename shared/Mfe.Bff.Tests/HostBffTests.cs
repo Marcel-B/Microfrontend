@@ -38,31 +38,6 @@ public sealed class HostBffTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Remote_api_returns_401_instead_of_redirect_for_anonymous_users()
-    {
-        var client = _app.GetTestClient();
-        client.DefaultRequestHeaders.Add("X-CSRF", "1");
-
-        var response = await client.GetAsync("/api/vue-demo/me");
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Remote_registry_lists_pages_with_roles_and_titles_per_language()
-    {
-        var registry = await _app.GetTestClient().GetFromJsonAsync<RegistryDto>("/bff/remotes");
-
-        Assert.NotNull(registry);
-        var remote = Assert.Single(registry.Remotes);
-        Assert.Equal("vueDemo", remote.Name);
-        var admin = remote.Pages.Single(p => p.Path == "/admin");
-        Assert.Contains("admin", admin.Roles);
-        Assert.Equal("Klick-Demo", remote.Pages.Single(p => p.Path == "/demo").Title["de"]);
-        Assert.Equal("Click demo", remote.Pages.Single(p => p.Path == "/demo").Title["en"]);
-    }
-
-    [Fact]
     public async Task Built_shell_is_served_with_index_html_as_fallback_for_client_routes()
     {
         var root = Directory.CreateTempSubdirectory("shell-").FullName;
@@ -102,10 +77,4 @@ public sealed class HostBffTests : IAsyncLifetime
 
     private static Task<WebApplication> StartHostBffAsync(Dictionary<string, string?>? overrides = null) =>
         TestApps.StartAsync("vue-host", builder => builder.AddHostBff(), app => app.UseHostBff(), overrides);
-
-    private sealed record RegistryDto(List<RemoteDto> Remotes);
-
-    private sealed record RemoteDto(string Name, string Entry, List<PageDto> Pages);
-
-    private sealed record PageDto(string Path, Dictionary<string, string> Title, List<string> Roles);
 }

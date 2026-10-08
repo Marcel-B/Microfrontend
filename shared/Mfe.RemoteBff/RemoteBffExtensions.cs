@@ -1,4 +1,6 @@
 using Mfe.ClientApp;
+using Mfe.RemoteBff.Registration;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 using Yarp.ReverseProxy.Transforms;
@@ -8,7 +10,8 @@ namespace Mfe.RemoteBff;
 /// <summary>
 /// Wires up a remote BFF. It sits behind a host BFF, which forwards two kinds of requests:
 /// the remote's UI (remoteEntry.js and its chunks) and calls to the remote's API under /api with the user's
-/// access token as bearer token. The remote BFF never sees the session cookie.
+/// access token as bearer token. The remote BFF never sees the session cookie. It registers itself at the host
+/// ("Registration"), so the host knows its pages and where to forward them, and answers the host's health checks.
 /// </summary>
 public static class RemoteBffExtensions
 {
@@ -31,6 +34,7 @@ public static class RemoteBffExtensions
         builder.Services.AddAuthorization();
         builder.Services.AddHttpForwarder();
         builder.Services.AddProblemDetails();
+        builder.Services.AddHostRegistration(builder.Configuration);
         // In Development: the remote's own Vite dev server (ClientApp/), listed under "DevServers".
         builder.AddClientAppDevServers();
         return builder;
@@ -40,6 +44,10 @@ public static class RemoteBffExtensions
     {
         app.UseAuthentication();
         app.UseAuthorization();
+
+        // /health: the BFF is up (the host's health check). /health/ready: also registered at the host.
+        app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = check => !check.Tags.Contains(RegistrationExtensions.ReadyTag) });
+        app.MapHealthChecks("/health/ready");
         return app;
     }
 

@@ -2,7 +2,8 @@
 import { computed, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { localized } from '../i18n'
-import { frontendKey } from '../lib/remotes'
+import { frontendKey, pagesInOrder } from '../lib/remotes'
+import { adminRole } from '../lib/registry'
 import { useAuthStore } from '../stores/auth'
 
 interface NavItem {
@@ -17,12 +18,14 @@ const { t, locale } = useI18n()
 
 const items = computed<NavItem[]>(() => [
   { to: '/', label: t('nav.home'), icon: 'pi pi-home' },
-  ...frontend.remotes
-    .flatMap((remote) => remote.pages)
+  ...pagesInOrder(frontend)
     .filter((page) => page.showInNav)
     .filter((page) => (page.requiresAuth || page.roles.length ? auth.isAuthenticated && auth.hasAnyRole(page.roles) : true))
     .map((page) => ({ to: page.path, label: localized(page.title, locale.value), icon: page.icon ?? 'pi pi-file' })),
   { to: '/debug', label: t('nav.debug'), icon: 'pi pi-wrench' },
+  ...(auth.isAuthenticated && auth.hasAnyRole([adminRole])
+    ? [{ to: '/debug/registry', label: t('nav.registry'), icon: 'pi pi-sitemap' }]
+    : []),
 ])
 </script>
 

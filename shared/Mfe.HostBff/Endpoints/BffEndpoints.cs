@@ -1,10 +1,8 @@
 using System.Security.Claims;
 using Mfe.HostBff.Auth;
-using Mfe.HostBff.Options;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
-using Microsoft.Extensions.Options;
 
 namespace Mfe.HostBff.Endpoints;
 
@@ -12,7 +10,7 @@ public static class BffEndpoints
 {
     public static IEndpointRouteBuilder MapBffEndpoints(this IEndpointRouteBuilder app)
     {
-        var bff = app.MapGroup("/bff");
+        var bff = app.MapGroup("/bff").WithTags("Shell");
 
         bff.MapGet("/login", (string? returnUrl, HttpContext context) =>
             Results.Challenge(
@@ -58,8 +56,6 @@ public static class BffEndpoints
                 SessionExpiresAt: expiresUtc));
         });
 
-        bff.MapGet("/remotes", (IOptionsSnapshot<RemoteRegistry> registry) => Results.Ok(registry.Value));
-
         return app;
     }
 
@@ -71,12 +67,6 @@ public static class BffEndpoints
         && !returnUrl.StartsWith("/\\", StringComparison.Ordinal)
             ? returnUrl
             : context.Request.PathBase.HasValue ? context.Request.PathBase.Value! : "/";
-}
-
-/// <summary>Response of GET /bff/remotes.</summary>
-public sealed class RemoteRegistry
-{
-    public List<RemoteDefinition> Remotes { get; set; } = [];
 }
 
 public sealed record BffClaim(string Type, string Value);
