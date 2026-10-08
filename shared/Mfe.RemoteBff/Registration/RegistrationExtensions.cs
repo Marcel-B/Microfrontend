@@ -15,19 +15,12 @@ public static class RegistrationExtensions
             .Bind(configuration.GetSection(RegistrationOptions.SectionName))
             .PostConfigure(options =>
             {
-                // The remote already knows its Identity server and audience from token validation.
-                options.Authority = string.IsNullOrEmpty(options.Authority) ? configuration["Jwt:Authority"] : options.Authority;
+                // The remote already knows the audience of its API from token validation.
                 options.Remote.ApiScope = string.IsNullOrEmpty(options.Remote.ApiScope) ? configuration["Jwt:Audience"] : options.Remote.ApiScope;
-                if (configuration["Jwt:RequireHttpsMetadata"] is { } requireHttps && configuration[$"{RegistrationOptions.SectionName}:RequireHttpsMetadata"] is null)
-                {
-                    options.RequireHttpsMetadata = bool.Parse(requireHttps);
-                }
             });
 
         services.TryAddSingleton(TimeProvider.System);
-        services.AddHttpClient(ClientCredentialsTokens.HttpClientName);
         services.AddHttpClient(HostRegistration.HttpClientName);
-        services.AddSingleton<ClientCredentialsTokens>();
         services.AddSingleton<RegistrationState>();
         services.AddHostedService<HostRegistration>();
 

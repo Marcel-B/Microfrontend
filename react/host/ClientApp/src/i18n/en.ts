@@ -3,7 +3,7 @@ import type de from './de'
 export default {
   common: { close: 'Close' },
   app: { name: 'Microfrontend', variant: 'React' },
-  nav: { label: 'Main navigation', open: 'Open navigation', title: 'Navigation', home: 'Home', debug: 'Debug', registry: 'Registry' },
+  nav: { label: 'Main navigation', open: 'Open navigation', title: 'Navigation', home: 'Home', debug: 'Debug', registry: 'Registry', system: 'System' },
   header: {
     login: 'Sign in',
     logout: 'Sign out',
@@ -71,7 +71,8 @@ export default {
     intro: 'Remotes register themselves at the host BFF and renew their registration with a heartbeat. This page refreshes every {{seconds}} s.',
     loadError: 'Registry not loaded: {{error}}',
     settings: 'Host settings',
-    audience: 'Audience of the registration API',
+    apiKeys: 'API keys for',
+    noApiKeys: 'No API keys configured: no remote can register.',
     timing: 'Timing',
     timingValue: 'Heartbeat every {{heartbeat}} s, lease {{lease}} s, health check every {{check}} s, unreachable after {{threshold}} failures',
     requestedScopes: 'Scopes at sign-in',
@@ -82,7 +83,7 @@ export default {
     status: 'Status',
     version: 'Version',
     address: 'Address',
-    owner: 'Client',
+    group: 'Group',
     heartbeat: 'Last heartbeat',
     leaseExpires: 'Lease ends',
     ago: '{{seconds}} s ago',

@@ -10,7 +10,7 @@ export interface RemotePage {
   requiresAuth: boolean
   roles: string[]
   showInNav: boolean
-  /** Position in the navigation; lower comes first. */
+  /** Position in the navigation group; lower comes first. */
   order: number
 }
 
@@ -21,6 +21,8 @@ export interface RemoteDefinition {
   name: string
   entry: string
   version?: string | null
+  /** Navigation group the remote's pages appear under. Only the shell's start page has none. */
+  group: string
   pages: RemotePage[]
 }
 
@@ -33,7 +35,29 @@ export interface FrontendConfig {
 
 export interface RemoteRoute extends RemotePage {
   remote: string
+  group: string
   component: LazyExoticComponent<ComponentType>
+}
+
+/** A heading in the navigation with its entries. */
+export interface NavGroup<T> {
+  name: string
+  pages: T[]
+}
+
+/**
+ * Pages by navigation group: remotes with the same group are listed together, their pages by order. A group comes
+ * where its lowest entry would, groups with the same position by name. Filter the pages first (e.g. by role), so a
+ * group whose pages the user may not see does not appear at all.
+ */
+export function groupPages<T extends { group: string; order: number }>(pages: T[]): NavGroup<T>[] {
+  const groups = new Map<string, T[]>()
+  for (const page of [...pages].sort((a, b) => a.order - b.order)) {
+    groups.set(page.group, [...(groups.get(page.group) ?? []), page])
+  }
+  return [...groups]
+    .map(([name, entries]) => ({ name, pages: entries }))
+    .sort((a, b) => a.pages[0]!.order - b.pages[0]!.order || a.name.localeCompare(b.name))
 }
 
 /** How often the shell asks the host BFF which remotes are reachable. */
@@ -108,11 +132,16 @@ function remoteComponent(remote: string, module: string): LazyExoticComponent<Co
   return component
 }
 
-/** The routes of all remote pages in navigation order, e.g. ("reactDemo", "./DemoPage"). */
+/** The routes of all remote pages, with their group, in navigation order, e.g. ("reactDemo", "./DemoPage"). */
 export function createRemoteRoutes(config: FrontendConfig): RemoteRoute[] {
-  return config.remotes
-    .flatMap((remote) =>
-      remote.pages.map((page) => ({ ...page, remote: remote.name, component: remoteComponent(remote.name, page.module) })),
-    )
-    .sort((a, b) => a.order - b.order)
+  return groupPages(
+    config.remotes.flatMap((remote) =>
+      remote.pages.map((page) => ({
+        ...page,
+        remote: remote.name,
+        group: remote.group,
+        component: remoteComponent(remote.name, page.module),
+      })),
+    ),
+  ).flatMap((group) => group.pages)
 }

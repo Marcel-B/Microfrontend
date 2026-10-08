@@ -14,21 +14,11 @@ public sealed class RegistrationOptions
     /// <summary>Address of this BFF as the host reaches it. Empty: the first address Kestrel listens on.</summary>
     public string? Address { get; set; }
 
-    /// <summary>Identity server for the client-credentials token. Empty: "Jwt:Authority".</summary>
-    public string? Authority { get; set; }
-
-    /// <summary>Token endpoint. Empty: taken from the Identity server's discovery document.</summary>
-    public string? TokenEndpoint { get; set; }
-
-    public bool RequireHttpsMetadata { get; set; } = true;
-
-    /// <summary>Service client of this remote at the Identity server, e.g. "mfe-vue-demo".</summary>
-    public string ClientId { get; set; } = string.Empty;
-
-    public string? ClientSecret { get; set; }
-
-    /// <summary>Scope of the host's registry; becomes the token's audience, e.g. "vue-registry".</summary>
-    public string Scope { get; set; } = string.Empty;
+    /// <summary>
+    /// This remote's key at the host ("Registry:ApiKeys" there, under the remote's id), sent as X-Api-Key. Keep it out
+    /// of the repository: user secrets or the environment variable Registration__ApiKey.
+    /// </summary>
+    public string? ApiKey { get; set; }
 
     /// <summary>Heartbeat interval until the host tells its own.</summary>
     public TimeSpan HeartbeatInterval { get; set; } = TimeSpan.FromSeconds(10);
@@ -52,6 +42,9 @@ public sealed class RemoteDescription
     public string? Version { get; set; }
 
     public Dictionary<string, string> DisplayName { get; set; } = [];
+
+    /// <summary>Navigation group the remote's pages appear under in the shell, e.g. "Demo".</summary>
+    public string Group { get; set; } = string.Empty;
 
     /// <summary>Audience the remote's API expects. Empty: "Jwt:Audience".</summary>
     public string? ApiScope { get; set; }
@@ -81,5 +74,6 @@ public sealed class PageDescription
 
     public bool ShowInNav { get; set; } = true;
 
+    /// <summary>Position in the navigation group; lower comes first.</summary>
     public int Order { get; set; }
 }

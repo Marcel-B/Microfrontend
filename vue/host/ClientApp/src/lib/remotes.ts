@@ -10,7 +10,7 @@ export interface RemotePage {
   requiresAuth: boolean
   roles: string[]
   showInNav: boolean
-  /** Position in the navigation; lower comes first. */
+  /** Position in the navigation group; lower comes first. */
   order: number
 }
 
@@ -21,7 +21,15 @@ export interface RemoteDefinition {
   name: string
   entry: string
   version?: string | null
+  /** Navigation group the remote's pages appear under. Only the shell's start page has none. */
+  group: string
   pages: RemotePage[]
+}
+
+/** A heading in the navigation with its entries. */
+export interface NavGroup<T> {
+  name: string
+  pages: T[]
 }
 
 export interface FrontendConfig {
@@ -64,11 +72,28 @@ export async function loadFrontendConfig(): Promise<FrontendConfig> {
   return config
 }
 
-/** All pages of all remotes in navigation order. */
-export function pagesInOrder(config: FrontendConfig): (RemotePage & { remote: string })[] {
-  return config.remotes
-    .flatMap((remote) => remote.pages.map((page) => ({ ...page, remote: remote.name })))
-    .sort((a, b) => a.order - b.order)
+export type GroupedPage = RemotePage & { remote: string; group: string }
+
+/**
+ * Pages by navigation group: remotes with the same group are listed together, their pages by order. A group comes
+ * where its lowest entry would, groups with the same position by name. Filter the pages first (e.g. by role), so a
+ * group whose pages the user may not see does not appear at all.
+ */
+export function groupPages<T extends { group: string; order: number }>(pages: T[]): NavGroup<T>[] {
+  const groups = new Map<string, T[]>()
+  for (const page of [...pages].sort((a, b) => a.order - b.order)) {
+    groups.set(page.group, [...(groups.get(page.group) ?? []), page])
+  }
+  return [...groups]
+    .map(([name, entries]) => ({ name, pages: entries }))
+    .sort((a, b) => a.pages[0]!.order - b.pages[0]!.order || a.name.localeCompare(b.name))
+}
+
+/** All pages of all remotes, with their group, in navigation order. */
+export function pagesInOrder(config: FrontendConfig): GroupedPage[] {
+  return groupPages(
+    config.remotes.flatMap((remote) => remote.pages.map((page) => ({ ...page, remote: remote.name, group: remote.group }))),
+  ).flatMap((group) => group.pages)
 }
 
 /**

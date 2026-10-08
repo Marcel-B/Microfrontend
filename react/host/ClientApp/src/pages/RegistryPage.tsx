@@ -92,8 +92,17 @@ export default function RegistryPage() {
             </CardHeader>
             <CardContent>
               <dl className="grid grid-cols-[12rem_1fr] gap-x-4 gap-y-2 text-sm" data-testid="registry-settings">
-                <dt className="text-muted-foreground">{t('registry.audience')}</dt>
-                <dd>{registry.settings.audience}</dd>
+                <dt className="text-muted-foreground">{t('registry.apiKeys')}</dt>
+                <dd className="flex flex-wrap gap-1">
+                  {registry.settings.apiKeys.map((id) => (
+                    <Badge key={id} variant="secondary">
+                      {id}
+                    </Badge>
+                  ))}
+                  {registry.settings.apiKeys.length === 0 && (
+                    <span className="text-muted-foreground">{t('registry.noApiKeys')}</span>
+                  )}
+                </dd>
                 <dt className="text-muted-foreground">{t('registry.timing')}</dt>
                 <dd>
                   {t('registry.timingValue', {
@@ -128,9 +137,9 @@ export default function RegistryPage() {
                     <TableHead className="w-10" />
                     <TableHead>{t('registry.remote')}</TableHead>
                     <TableHead>{t('registry.status')}</TableHead>
+                    <TableHead>{t('registry.group')}</TableHead>
                     <TableHead>{t('registry.version')}</TableHead>
                     <TableHead>{t('registry.address')}</TableHead>
-                    <TableHead>{t('registry.owner')}</TableHead>
                     <TableHead>{t('registry.heartbeat')}</TableHead>
                     <TableHead>{t('registry.leaseExpires')}</TableHead>
                   </TableRow>
@@ -166,9 +175,9 @@ export default function RegistryPage() {
                             {t(`registry.health.${remote.health}`)}
                           </Badge>
                         </TableCell>
+                        <TableCell>{remote.group}</TableCell>
                         <TableCell>{remote.version ?? '–'}</TableCell>
                         <TableCell className="break-all whitespace-normal">{remote.address}</TableCell>
-                        <TableCell>{remote.owner}</TableCell>
                         <TableCell>{ago(remote.lastHeartbeatAt)}</TableCell>
                         <TableCell>{ago(remote.leaseExpiresAt)}</TableCell>
                       </TableRow>
@@ -197,10 +206,10 @@ export default function RegistryPage() {
                     <TableHead>{t('registry.remote')}</TableHead>
                     <TableHead>{t('registry.reason')}</TableHead>
                     <TableHead>{t('registry.leftAt')}</TableHead>
+                    <TableHead>{t('registry.group')}</TableHead>
                     <TableHead>{t('registry.version')}</TableHead>
                     <TableHead>{t('registry.address')}</TableHead>
                     <TableHead>{t('registry.pages')}</TableHead>
-                    <TableHead>{t('registry.owner')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -219,10 +228,10 @@ export default function RegistryPage() {
                         <Badge className={eventTone[former.reason]}>{t(`registry.events.${former.reason}`)}</Badge>
                       </TableCell>
                       <TableCell>{dateTime(former.leftAt)}</TableCell>
+                      <TableCell>{former.group}</TableCell>
                       <TableCell>{former.version ?? '–'}</TableCell>
                       <TableCell className="break-all whitespace-normal">{former.address}</TableCell>
                       <TableCell>{former.pages.map((p) => p.path).join(', ')}</TableCell>
-                      <TableCell>{former.owner}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -242,14 +251,13 @@ export default function RegistryPage() {
                     <TableHead>{t('registry.time')}</TableHead>
                     <TableHead>{t('registry.remote')}</TableHead>
                     <TableHead>{t('registry.event')}</TableHead>
-                    <TableHead>{t('registry.owner')}</TableHead>
                     <TableHead>{t('registry.detail')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {registry.history.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={5}>{t('registry.noHistory')}</TableCell>
+                      <TableCell colSpan={4}>{t('registry.noHistory')}</TableCell>
                     </TableRow>
                   )}
                   {registry.history.map((event, index) => (
@@ -259,7 +267,6 @@ export default function RegistryPage() {
                       <TableCell>
                         <Badge className={eventTone[event.kind]}>{t(`registry.events.${event.kind}`)}</Badge>
                       </TableCell>
-                      <TableCell>{event.owner ?? '–'}</TableCell>
                       <TableCell className="break-all whitespace-normal">{event.detail ?? ''}</TableCell>
                     </TableRow>
                   ))}

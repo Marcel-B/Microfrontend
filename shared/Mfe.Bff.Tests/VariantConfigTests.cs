@@ -24,13 +24,25 @@ public sealed class VariantConfigTests
 
     [Theory]
     [MemberData(nameof(Variants))]
-    public void Demo_remote_asks_for_the_scope_its_host_registry_expects(string variant)
+    public void Demo_remote_registers_with_the_api_key_its_host_has_for_it_in_development(string variant)
     {
-        var registration = Load($"{variant}-demo").GetProperty("Registration");
-        var host = Load($"{variant}-host");
+        var id = Load($"{variant}-demo").GetProperty("Registration").GetProperty("Remote").GetProperty("Id").GetString()!;
+        var key = Load($"{variant}-demo.Development").GetProperty("Registration").GetProperty("ApiKey").GetString();
+        var hostKeys = Load($"{variant}-host.Development").GetProperty("Registry").GetProperty("ApiKeys");
 
-        Assert.Equal(host.GetProperty("Registry").GetProperty("Audience").GetString(), registration.GetProperty("Scope").GetString());
-        Assert.Equal($"mfe-{variant}-demo", registration.GetProperty("ClientId").GetString());
+        Assert.False(string.IsNullOrEmpty(key));
+        Assert.Equal(hostKeys.GetProperty(id).GetString(), key);
+        // Keys belong in user secrets or the environment outside development.
+        Assert.False(Load($"{variant}-host").TryGetProperty("Registry", out var registry) && registry.TryGetProperty("ApiKeys", out _));
+    }
+
+    [Theory]
+    [MemberData(nameof(Variants))]
+    public void Demo_remote_names_its_navigation_group(string variant)
+    {
+        var remote = Load($"{variant}-demo").GetProperty("Registration").GetProperty("Remote");
+
+        Assert.False(string.IsNullOrWhiteSpace(remote.GetProperty("Group").GetString()));
     }
 
     [Theory]

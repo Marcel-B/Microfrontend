@@ -1,6 +1,6 @@
 export default {
   app: { name: 'Microfrontend', variant: 'Vue' },
-  nav: { label: 'Hauptnavigation', open: 'Navigation öffnen', title: 'Navigation', home: 'Start', debug: 'Debug', registry: 'Registry' },
+  nav: { label: 'Hauptnavigation', open: 'Navigation öffnen', title: 'Navigation', home: 'Start', debug: 'Debug', registry: 'Registry', system: 'System' },
   header: {
     login: 'Anmelden',
     logout: 'Abmelden',
@@ -68,7 +68,8 @@ export default {
     intro: 'Remotes melden sich selbst am Host-BFF an und erneuern die Anmeldung per Heartbeat. Die Seite aktualisiert sich alle {seconds} s.',
     loadError: 'Registry nicht geladen: {error}',
     settings: 'Einstellungen des Hosts',
-    audience: 'Audience der Anmelde-API',
+    apiKeys: 'API-Keys für',
+    noApiKeys: 'Keine API-Keys konfiguriert: kein Remote kann sich anmelden.',
     timing: 'Zeiten',
     timingValue: 'Heartbeat alle {heartbeat} s, Lease {lease} s, Health-Check alle {check} s, nicht erreichbar nach {threshold} Fehlschlägen',
     requestedScopes: 'Scopes beim Login',
@@ -79,7 +80,7 @@ export default {
     status: 'Status',
     version: 'Version',
     address: 'Adresse',
-    owner: 'Client',
+    group: 'Gruppe',
     heartbeat: 'Letzter Heartbeat',
     leaseExpires: 'Lease endet',
     ago: 'vor {seconds} s',

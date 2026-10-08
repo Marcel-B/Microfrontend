@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
 using Microsoft.AspNetCore.Hosting.Server;
@@ -15,7 +13,6 @@ namespace Mfe.RemoteBff.Registration;
 /// </summary>
 public sealed class HostRegistration(
     IHttpClientFactory httpClientFactory,
-    ClientCredentialsTokens tokens,
     RegistrationState state,
     IOptions<RegistrationOptions> options,
     IHostApplicationLifetime lifetime,
@@ -24,6 +21,9 @@ public sealed class HostRegistration(
     ILogger<HostRegistration> logger) : BackgroundService
 {
     public const string HttpClientName = "registration-host";
+
+    /// <summary>Header the host reads the remote's API key from.</summary>
+    public const string ApiKeyHeader = "X-Api-Key";
 
     private static readonly TimeSpan FirstRetry = TimeSpan.FromSeconds(1);
 
@@ -35,6 +35,11 @@ public sealed class HostRegistration(
         {
             logger.LogInformation("Registration:HostUrl is not set, the remote does not register at a host");
             return;
+        }
+
+        if (string.IsNullOrEmpty(Settings.ApiKey))
+        {
+            logger.LogWarning("Registration:ApiKey is not set, the host {Host} will refuse the registration", Settings.HostUrl);
         }
 
         // The host checks the remote's health right away, so register only once Kestrel accepts requests.
@@ -102,8 +107,7 @@ public sealed class HostRegistration(
         timeout.CancelAfter(Settings.DeregisterTimeout);
         try
         {
-            using var request = new HttpRequestMessage(HttpMethod.Delete, RegistrationUrl());
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(timeout.Token));
+            using var request = Request(HttpMethod.Delete);
             using var response = await httpClientFactory.CreateClient(HttpClientName).SendAsync(request, timeout.Token);
             state.Deregistered();
             logger.LogInformation("Deregistered from host {Host} ({Status})", Settings.HostUrl, (int)response.StatusCode);
@@ -117,31 +121,25 @@ public sealed class HostRegistration(
 
     private async Task<RegistrationResponse> RegisterAsync(CancellationToken cancellationToken)
     {
-        var client = httpClientFactory.CreateClient(HttpClientName);
-        for (var attempt = 1; ; attempt++)
+        using var request = Request(HttpMethod.Put);
+        request.Content = JsonContent.Create(Body());
+        using var response = await httpClientFactory.CreateClient(HttpClientName).SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Put, RegistrationUrl()) { Content = JsonContent.Create(Body()) };
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(cancellationToken));
-            using var response = await client.SendAsync(request, cancellationToken);
-
-            if (response.StatusCode == HttpStatusCode.Unauthorized && attempt == 1)
-            {
-                tokens.Forget();
-                continue;
-            }
-
-            if (!response.IsSuccessStatusCode)
-            {
-                throw new HttpRequestException(
-                    $"Host answered {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(cancellationToken)}");
-            }
-
-            return (await response.Content.ReadFromJsonAsync<RegistrationResponse>(cancellationToken))!;
+            throw new HttpRequestException(
+                $"Host answered {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(cancellationToken)}");
         }
+
+        return (await response.Content.ReadFromJsonAsync<RegistrationResponse>(cancellationToken))!;
     }
 
-    private Uri RegistrationUrl() =>
-        new($"{Settings.HostUrl!.TrimEnd('/')}/registry/remotes/{Uri.EscapeDataString(Settings.Remote.Id)}");
+    private HttpRequestMessage Request(HttpMethod method)
+    {
+        var request = new HttpRequestMessage(method, $"{Settings.HostUrl!.TrimEnd('/')}/registry/remotes/{Uri.EscapeDataString(Settings.Remote.Id)}");
+        request.Headers.Add(ApiKeyHeader, Settings.ApiKey ?? string.Empty);
+        return request;
+    }
 
     private object Body()
     {
@@ -152,6 +150,7 @@ public sealed class HostRegistration(
             Address = Address(),
             Version = string.IsNullOrEmpty(remote.Version) ? EntryVersion() : remote.Version,
             remote.DisplayName,
+            remote.Group,
             remote.ApiScope,
             remote.HealthPath,
             remote.Pages,

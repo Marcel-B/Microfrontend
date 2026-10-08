@@ -8,6 +8,7 @@ internal static class RegistrationComparer
         && a.FederationName == b.FederationName
         && a.Address == b.Address
         && a.Version == b.Version
+        && a.Group == b.Group
         && a.ApiScope == b.ApiScope
         && a.HealthPath == b.HealthPath
         && SameTexts(a.DisplayName, b.DisplayName)
