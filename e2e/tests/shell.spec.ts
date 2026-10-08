@@ -111,6 +111,15 @@ test.describe('Shell', () => {
     await expect(page.getByRole('heading', { name: 'Nicht angemeldet' })).toBeVisible()
   })
 
+  test('sends pages opened on the Vite port of the shell to the host BFF', async ({ page, baseURL, variant }) => {
+    test.skip(!!process.env.E2E_VUE_URL, 'Only the local Vite dev servers redirect.')
+    const vitePort = variant === 'vue' ? 5173 : 5183
+    await page.goto(`http://localhost:${vitePort}/debug`)
+
+    await expect(page).toHaveURL(new URL('/debug', baseURL).href)
+    await expect(page.getByTestId('debug-authenticated')).toHaveText('nein')
+  })
+
   test('debug page shows anonymous session', async ({ page, shell }) => {
     await shell.goto('debug')
 

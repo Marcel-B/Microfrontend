@@ -150,6 +150,8 @@ Dann im Browser immer über das Host-BFF öffnen, nicht über die Vite-Ports:
 - Vue: http://localhost:5010/
 - React: http://localhost:5020/
 
+Nur dort gibt es `/bff/*`, also die Anmeldung. Wer die Shell trotzdem über ihren Vite-Port öffnet (5173, 5183), wird zum Host-BFF umgeleitet.
+
 Testbenutzer (nur in Development angelegt, siehe `appsettings.Development.json` im Identity-Repo):
 
 | Benutzer | Passwort | Rollen |
