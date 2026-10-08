@@ -74,6 +74,21 @@ public sealed class HostBffTests : IAsyncLifetime
         Assert.Equal("<html>shell</html>", response);
     }
 
+    [Fact]
+    public async Task Shell_dev_server_never_sees_cookies()
+    {
+        var (devServer, url) = await TestApps.StartDevServerAsync();
+        await using var _ = devServer;
+        await using var app = await StartHostBffAsync(new() { ["Shell:DevServer"] = url });
+        var client = app.GetTestClient();
+        // A logged-in browser on localhost: chunked sessions of both variants are over Node's 16 KB header limit.
+        client.DefaultRequestHeaders.Add("Cookie", "mfe.vue.sessionC1=abc; mfe.react.sessionC1=def");
+
+        var response = await client.GetStringAsync("/demo");
+
+        Assert.Equal("no cookie", response);
+    }
+
     [Theory]
     [InlineData("/debug", "/debug")]
     [InlineData("https://evil.example", "/")]

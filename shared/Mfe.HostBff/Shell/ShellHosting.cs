@@ -1,5 +1,6 @@
 using Mfe.HostBff.Options;
 using Microsoft.Extensions.FileProviders;
+using Yarp.ReverseProxy.Transforms;
 
 namespace Mfe.HostBff.Shell;
 
@@ -15,8 +16,12 @@ public static class ShellHosting
 
         if (!string.IsNullOrEmpty(options.DevServer))
         {
-            // Lowest priority: /bff, /api and /remotes routes always win.
-            app.MapForwarder("/{**catch-all}", options.DevServer).WithOrder(int.MaxValue);
+            // Lowest priority: /bff, /api and /remotes routes always win. Like the YARP routes (BffProxy), the
+            // forwarder drops the Cookie header: the browser sends every localhost cookie whatever the port (this
+            // session, the other variant's, the Identity server's), and the chunked sessions alone come close to
+            // Node's 16 KB header limit, so Vite answered page loads and its HMR socket with 431.
+            app.MapForwarder("/{**catch-all}", options.DevServer, transforms => transforms.AddRequestHeaderRemove("Cookie"))
+                .WithOrder(int.MaxValue);
             return app;
         }
 
