@@ -1,4 +1,6 @@
 using System.Text.Json;
+using Mfe.HostBff.Registry;
+using Microsoft.Extensions.Configuration;
 
 namespace Mfe.Bff.Tests;
 
@@ -9,28 +11,33 @@ public sealed class VariantConfigTests
 
     [Theory]
     [MemberData(nameof(Variants))]
-    public void Every_remote_entry_is_routed_by_the_host_bff(string variant)
+    public void Demo_remote_registers_under_the_path_its_ui_is_served_at(string variant)
     {
+        var demo = Load($"{variant}-demo");
+        var id = demo.GetProperty("Registration").GetProperty("Remote").GetProperty("Id").GetString();
+
+        Assert.Equal($"/remotes/{id}/", demo.GetProperty("Ui").GetProperty("BasePath").GetString());
+        // The id must not collide with a static route of the host, e.g. the component library.
+        Assert.DoesNotContain(id, RegistryExtensions.StaticRouteIds(Configuration($"{variant}-host")));
+        Assert.Contains($"{variant}-components", RegistryExtensions.StaticRouteIds(Configuration($"{variant}-host")));
+    }
+
+    [Theory]
+    [MemberData(nameof(Variants))]
+    public void Demo_remote_asks_for_the_scope_its_host_registry_expects(string variant)
+    {
+        var registration = Load($"{variant}-demo").GetProperty("Registration");
         var host = Load($"{variant}-host");
-        var routes = host.GetProperty("ReverseProxy").GetProperty("Routes").EnumerateObject()
-            .Select(r => r.Value.GetProperty("Match").GetProperty("Path").GetString()!.Replace("{**catch-all}", ""))
-            .ToList();
 
-        foreach (var remote in host.GetProperty("Remotes").EnumerateArray())
-        {
-            var entry = remote.GetProperty("Entry").GetString()!;
-            Assert.Contains(routes, prefix => entry.StartsWith(prefix, StringComparison.Ordinal));
-        }
-
-        Assert.Contains($"/remotes/{variant}-components/", routes);
+        Assert.Equal(host.GetProperty("Registry").GetProperty("Audience").GetString(), registration.GetProperty("Scope").GetString());
+        Assert.Equal($"mfe-{variant}-demo", registration.GetProperty("ClientId").GetString());
     }
 
     [Theory]
     [MemberData(nameof(Variants))]
     public void Every_page_has_a_german_and_an_english_title(string variant)
     {
-        var pages = Load($"{variant}-host").GetProperty("Remotes").EnumerateArray()
-            .SelectMany(r => r.GetProperty("Pages").EnumerateArray());
+        var pages = Load($"{variant}-demo").GetProperty("Registration").GetProperty("Remote").GetProperty("Pages").EnumerateArray();
 
         foreach (var page in pages)
         {
@@ -87,6 +94,9 @@ public sealed class VariantConfigTests
         [.. development.GetProperty("DevServers").EnumerateArray().Select(s => Origin(s.GetProperty("Url").GetString()!))];
 
     private static string Origin(string url) => new Uri(url).GetLeftPart(UriPartial.Authority);
+
+    private static IConfiguration Configuration(string name) =>
+        new ConfigurationBuilder().AddJsonFile(TestApps.VariantConfig(name)).Build();
 
     private static JsonElement Load(string name) =>
         JsonDocument.Parse(File.ReadAllText(TestApps.VariantConfig(name))).RootElement;

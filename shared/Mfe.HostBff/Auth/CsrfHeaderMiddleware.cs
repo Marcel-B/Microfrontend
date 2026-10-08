@@ -9,7 +9,7 @@ public sealed class CsrfHeaderMiddleware(RequestDelegate next)
 {
     public const string HeaderName = "X-CSRF";
 
-    private static readonly PathString[] ProtectedPaths = ["/api", "/bff/user"];
+    private static readonly PathString[] ProtectedPaths = ["/api", "/bff/user", "/bff/registry"];
 
     public Task InvokeAsync(HttpContext context)
     {

@@ -100,7 +100,17 @@ public sealed class RemoteBffTests : IAsyncLifetime
             SigningCredentials = new SigningCredentials(SigningKey, SecurityAlgorithms.HmacSha256),
         });
 
-    private static Task<WebApplication> StartRemoteBffAsync(Dictionary<string, string?>? overrides = null) =>
+    [Fact]
+    public async Task Health_answers_without_token_and_is_ready_without_a_host()
+    {
+        var client = _app.GetTestClient();
+
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
+    }
+
+    /// <summary>Like the demo BFF, but without registering at a host unless a test asks for it.</summary>
+    internal static Task<WebApplication> StartRemoteBffAsync(Dictionary<string, string?>? overrides = null) =>
         TestApps.StartAsync(
             "vue-demo",
             builder =>
@@ -122,7 +132,7 @@ public sealed class RemoteBffTests : IAsyncLifetime
                     .RequireAuthorization();
                 app.MapRemoteUi();
             },
-            overrides);
+            new Dictionary<string, string?>(overrides ?? []) { ["Registration:HostUrl"] = overrides?.GetValueOrDefault("Registration:HostUrl") ?? "" });
 
     private sealed record MeDto(string? Name, bool IsAdmin);
 }
