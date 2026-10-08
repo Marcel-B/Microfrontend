@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.12" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Mfe.HostBff\Mfe.HostBff.csproj" />
+    <ProjectReference Include="..\Mfe.RemoteBff\Mfe.RemoteBff.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- The variants' appsettings.json are checked by VariantConfigTests. -->
+  <ItemGroup>
+    <None Include="..\..\vue\host\bff\appsettings.json" Link="variants\vue-host.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\react\host\bff\appsettings.json" Link="variants\react-host.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\vue\remote-demo\bff\appsettings.json" Link="variants\vue-demo.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\react\remote-demo\bff\appsettings.json" Link="variants\react-demo.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

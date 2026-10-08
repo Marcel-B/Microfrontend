@@ -3,19 +3,30 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "vue/*",
-    "react/*",
+    "vue/host/ui",
+    "vue/remote-demo/ui",
+    "vue/components",
+    "react/host/ui",
+    "react/remote-demo/ui",
+    "react/components",
     "e2e"
   ],
   "scripts": {
-    "dev": "concurrently -k -n identity,bff,vue,vue-demo,react,react-demo -c gray,blue,green,green,cyan,cyan \"npm:dev:identity\" \"npm:dev:bff\" \"npm:dev -w @mfe/vue-host\" \"npm:dev -w @mfe/vue-remote-demo\" \"npm:dev -w @mfe/react-host\" \"npm:dev -w @mfe/react-remote-demo\"",
-    "dev:vue": "concurrently -k -n identity,bff,vue,vue-demo -c gray,blue,green,green \"npm:dev:identity\" \"npm:dev:bff\" \"npm:dev -w @mfe/vue-host\" \"npm:dev -w @mfe/vue-remote-demo\"",
-    "dev:react": "concurrently -k -n identity,bff,react,react-demo -c gray,blue,cyan,cyan \"npm:dev:identity\" \"npm:dev:bff\" \"npm:dev -w @mfe/react-host\" \"npm:dev -w @mfe/react-remote-demo\"",
-    "dev:bff": "dotnet run --project bff/src/Mfe.Bff --launch-profile http",
+    "dev": "npm run build:bff && concurrently -k -n identity,vue,react -c gray,green,cyan \"npm:dev:identity\" \"npm:dev:vue:all\" \"npm:dev:react:all\"",
+    "dev:vue": "npm run build:bff && concurrently -k -n identity,vue -c gray,green \"npm:dev:identity\" \"npm:dev:vue:all\"",
+    "dev:react": "npm run build:bff && concurrently -k -n identity,react -c gray,cyan \"npm:dev:identity\" \"npm:dev:react:all\"",
+    "dev:vue:all": "concurrently -k -n vue-host-bff,vue-demo-bff,vue-shell,vue-demo,vue-components -c blue,blue,green,green,green \"npm:dev:vue:host-bff\" \"npm:dev:vue:demo-bff\" \"npm:dev -w @mfe/vue-host\" \"npm:dev -w @mfe/vue-remote-demo\" \"npm:dev -w @mfe/vue-components\"",
+    "dev:react:all": "concurrently -k -n react-host-bff,react-demo-bff,react-shell,react-demo,react-components -c magenta,magenta,cyan,cyan,cyan \"npm:dev:react:host-bff\" \"npm:dev:react:demo-bff\" \"npm:dev -w @mfe/react-host\" \"npm:dev -w @mfe/react-remote-demo\" \"npm:dev -w @mfe/react-components\"",
     "dev:identity": "dotnet run --project ../Identity/src/Identity.Server --launch-profile http",
+    "dev:vue:host-bff": "dotnet run --no-build --project vue/host/bff --launch-profile http",
+    "dev:vue:demo-bff": "dotnet run --no-build --project vue/remote-demo/bff --launch-profile http",
+    "dev:react:host-bff": "dotnet run --no-build --project react/host/bff --launch-profile http",
+    "dev:react:demo-bff": "dotnet run --no-build --project react/remote-demo/bff --launch-profile http",
+    "build:bff": "dotnet build Microfrontend.slnx",
     "build": "npm run build --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "test:e2e": "npm test -w @mfe/e2e"
+    "test:bff": "dotnet test Microfrontend.slnx",
+    "test:e2e": "npm run build:bff && npm test -w @mfe/e2e"
   },
   "devDependencies": {
     "concurrently": "^10.0.6"
