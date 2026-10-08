@@ -215,7 +215,7 @@ Wo Module Federation vom Muster aus YuE-UI abweicht:
 - **Ein `dotnet run` pro BFF, nicht eins für alles.** Remotes werden erst zur Laufzeit geladen und getrennt ausgeliefert. Ihre Oberfläche gehört deshalb in ihr eigenes BFF und nicht ins Host-BFF. Eine Variante braucht damit mindestens zwei Prozesse (Host-BFF und Demo-BFF) plus Identity, `npm run dev` startet alle zusammen. Sollte das auch aus .NET heraus mit einem Befehl gehen, wäre ein .NET-Aspire-AppHost der nächste Schritt.
 - **Die Komponenten-Bibliothek hat kein BFF.** Sie ist ein rein statisches Remote, das alle Remotes nutzen. In Development startet das Host-BFF ihren Vite-Server mit, weil es `/remotes/<variante>-components/` weiterleitet. Im Betrieb wird sie getrennt ausgeliefert und nicht mit einem BFF gebaut, sonst hinge jede Textänderung im gemeinsamen Wortschatz an dessen Release.
 - **Ein Lockfile für alle Oberflächen.** In YuE-UI hat `ClientApp` eine eigene `package-lock.json`. Hier sind die ClientApps npm-Workspaces des Repos, damit die Pakete, die Module Federation als Singleton teilt (`vue`, `react`, `vue-i18n`, …), in Host und Remotes dieselbe Version haben. `npm ci` läuft deshalb im Repo-Root.
-- **Die Vite-Ports bleiben.** Jeder Vite-Server braucht weiter seinen festen Port (`strictPort`), weil das BFF dorthin weiterleitet. Geöffnet wird trotzdem nur das Host-BFF.
+- **Die Vite-Ports bleiben.** Jeder Vite-Server braucht weiter seinen festen Port (`strictPort`), weil das BFF dorthin weiterleitet. Geöffnet wird trotzdem nur das Host-BFF; wer eine Shell über ihren Vite-Port aufruft, landet per Umleitung dort.
 
 ## Neues Remote anlegen
 
