@@ -1,3 +1,4 @@
+using Mfe.ClientApp;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.FileProviders;
 
@@ -29,6 +30,8 @@ public static class RemoteBffExtensions
         builder.Services.AddAuthorization();
         builder.Services.AddHttpForwarder();
         builder.Services.AddProblemDetails();
+        // In Development: the remote's own Vite dev server (ClientApp/), listed under "DevServers".
+        builder.AddClientAppDevServers();
         return builder;
     }
 

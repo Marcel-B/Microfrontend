@@ -14,7 +14,8 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           dotnet-version: 10.0.x
-      - run: dotnet test Microfrontend.slnx
+      # Node is not needed here: SkipClientAppBuild keeps the BFF builds from installing the frontends' npm packages.
+      - run: dotnet test Microfrontend.slnx -p:SkipClientAppBuild=true
 
   frontends:
     name: Frontends (typecheck + build)

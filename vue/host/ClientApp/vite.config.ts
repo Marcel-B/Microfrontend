@@ -23,8 +23,8 @@ const redirectToHostBff = (): Plugin => ({
   },
 })
 
-// The shell is served by its host BFF (../bff) at the root path. Remotes are not configured here: the shell
-// loads them at runtime from /bff/remotes.
+// The shell is served by its host BFF (the .NET project around this ClientApp folder) at the root path; "dotnet run"
+// starts this dev server. Remotes are not configured here: the shell loads them at runtime from /bff/remotes.
 export default defineConfig({
   base: '/',
   server: {

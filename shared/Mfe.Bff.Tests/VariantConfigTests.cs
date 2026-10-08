@@ -60,6 +60,34 @@ public sealed class VariantConfigTests
         Assert.NotEqual(Cookie("vue-host"), Cookie("react-host"));
     }
 
+    [Theory]
+    [MemberData(nameof(Variants))]
+    public void Host_bff_starts_the_shell_and_the_component_library_it_forwards_to(string variant)
+    {
+        var host = Load($"{variant}-host");
+        var development = Load($"{variant}-host.Development");
+        var started = DevServerOrigins(development);
+
+        Assert.Contains(Origin(development.GetProperty("Shell").GetProperty("DevServer").GetString()!), started);
+        var components = host.GetProperty("ReverseProxy").GetProperty("Clusters").GetProperty($"{variant}-components")
+            .GetProperty("Destinations").EnumerateObject().Single().Value.GetProperty("Address").GetString()!;
+        Assert.Contains(Origin(components), started);
+    }
+
+    [Theory]
+    [MemberData(nameof(Variants))]
+    public void Remote_bff_starts_the_ui_it_forwards_to(string variant)
+    {
+        var development = Load($"{variant}-demo.Development");
+
+        Assert.Contains(Origin(development.GetProperty("Ui").GetProperty("DevServer").GetString()!), DevServerOrigins(development));
+    }
+
+    private static List<string> DevServerOrigins(JsonElement development) =>
+        [.. development.GetProperty("DevServers").EnumerateArray().Select(s => Origin(s.GetProperty("Url").GetString()!))];
+
+    private static string Origin(string url) => new Uri(url).GetLeftPart(UriPartial.Authority);
+
     private static JsonElement Load(string name) =>
         JsonDocument.Parse(File.ReadAllText(TestApps.VariantConfig(name))).RootElement;
 }

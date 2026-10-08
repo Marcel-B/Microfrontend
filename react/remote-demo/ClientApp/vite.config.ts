@@ -4,8 +4,9 @@ import react from '@vitejs/plugin-react'
 import path from 'node:path'
 import { defineConfig } from 'vite'
 
-// UI of the demo remote. Its own BFF (../bff, react-demo-bff) serves it under /remotes/react-demo/, the host BFF
-// forwards that path to the remote BFF. The shell finds the remote via /bff/remotes.
+// UI of the demo remote. Its own BFF (the .NET project around this ClientApp folder, react-demo-bff) serves it under
+// /remotes/react-demo/ and starts this dev server with "dotnet run". The host BFF forwards that path to the remote BFF,
+// the shell finds the remote via /bff/remotes.
 export default defineConfig({
   base: '/remotes/react-demo/',
   resolve: {
