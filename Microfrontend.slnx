@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/shared/">
+    <Project Path="shared/Mfe.HostBff/Mfe.HostBff.csproj" />
+    <Project Path="shared/Mfe.RemoteBff/Mfe.RemoteBff.csproj" />
+    <Project Path="shared/Mfe.Bff.Tests/Mfe.Bff.Tests.csproj" />
+  </Folder>
+  <Folder Name="/vue/">
+    <Project Path="vue/host/bff/Mfe.Vue.HostBff.csproj" />
+    <Project Path="vue/remote-demo/bff/Mfe.Vue.DemoBff.csproj" />
+  </Folder>
+  <Folder Name="/react/">
+    <Project Path="react/host/bff/Mfe.React.HostBff.csproj" />
+    <Project Path="react/remote-demo/bff/Mfe.React.DemoBff.csproj" />
+  </Folder>
+</Solution>
